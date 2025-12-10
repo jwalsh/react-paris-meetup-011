@@ -1,0 +1,171 @@
+:PROPERTIES:
+:header-args: :mkdirp t
+:END:
+
+#+TITLE: React Paris Meetup #011 - Notes
+#+DATE: 2024-12-10
+#+AUTHOR: Your Name
+#+PROPERTY: header-args:python :tangle ./src/analysis.py :mkdirp t
+
+* Event Details
+:PROPERTIES:
+:LOCATION: L'atelier, 46 rue de l'Arbre Sec, 75001 Paris
+:TIME: 19:00 - 22:00 CET
+:ORGANIZERS: Gabriel P. and 2 others
+:END:
+
+** Resources
+- GitHub (talks): https://github.com/ReactParis/talks
+- GitHub (meetups): https://github.com/react-paris/meetups
+
+* Talk #1: Thinking Concurrently - React's New Mental Model
+:PROPERTIES:
+:SPEAKER: Ariel Shulman
+:ROLE: Full Stack Developer @ Factify
+:LANGUAGE: English
+:END:
+
+** Overview
+Understanding React 18's concurrency model and its impact on application architecture.
+
+** Key Topics
+- React 18 concurrency fundamentals
+- Mental model shift from synchronous to concurrent rendering
+- SSR and streaming components integration
+- UX principles and concurrent rendering
+
+** Notes
+#+begin_quote
+"The most important addition in React 18 is something we hope you never have to think about: concurrency."
+— React 18 docs
+#+end_quote
+
+*** Concurrency Concepts
+[Your notes here]
+
+*** SSR & Streaming
+[Your notes here]
+
+*** UX Impact
+[Your notes here]
+
+** Architecture Diagram
+#+begin_src mermaid :file ./diagrams/react-concurrent-model.png :mkdirp t
+graph TD
+    A[User Interaction] --> B{Concurrent Renderer}
+    B -->|High Priority| C[Urgent Updates]
+    B -->|Low Priority| D[Background Updates]
+    C --> E[Immediate UI Response]
+    D --> F[Streamed Components]
+    E --> G[Enhanced UX]
+    F --> G
+#+end_src
+
+* Talk #2: Évolution des librairies UI et futures problématiques
+:PROPERTIES:
+:SPEAKER: Théo Senoussaoui
+:ROLE: Développeur Frontend, Paris
+:LANGUAGE: Français
+:END:
+
+** Overview
+Evolution of headless UI libraries and emerging challenges in the ecosystem.
+
+** Key Topics
+- Historical context: scarcity of headless UI libraries
+- Current explosion: Radix, Headless UI, Ark UI, etc.
+- Technical decisions behind these libraries
+- Selection criteria for projects
+- New challenges and trade-offs
+
+** Headless UI Library Comparison
+#+begin_src mermaid :file ./diagrams/ui-libraries-evolution.png :mkdirp t
+timeline
+    title Evolution of Headless UI Libraries
+    2018 : Few options
+         : Styled components dominate
+    2020 : Headless UI emerges
+         : Radix UI launches
+    2022 : Ecosystem explosion
+         : Ark UI, React Aria
+    2024 : Maturity & consolidation
+         : New challenges appear
+#+end_src
+
+** Library Comparison Matrix
+#+begin_src python :tangle ./src/library_analysis.py :mkdirp t
+"""
+Analyze and compare headless UI libraries
+"""
+
+libraries = {
+    "Radix UI": {
+        "accessibility": "excellent",
+        "customization": "high",
+        "bundle_size": "moderate",
+        "ecosystem": "large"
+    },
+    "Headless UI": {
+        "accessibility": "excellent",
+        "customization": "high",
+        "bundle_size": "small",
+        "ecosystem": "tailwind-focused"
+    },
+    "Ark UI": {
+        "accessibility": "excellent",
+        "customization": "very high",
+        "bundle_size": "moderate",
+        "ecosystem": "growing"
+    }
+}
+
+def compare_libraries(criteria):
+    """Compare libraries based on given criteria"""
+    # Your analysis code here
+    pass
+#+end_src
+
+** Selection Decision Tree
+#+begin_src mermaid :file ./diagrams/library-selection.png :mkdirp t
+graph TD
+    A[Need Headless UI?] -->|Yes| B{Design System Exists?}
+    A -->|No| Z[Use Complete UI Library]
+    B -->|Yes| C{Using Tailwind?}
+    B -->|No| D[Consider Radix/Ark]
+    C -->|Yes| E[Headless UI]
+    C -->|No| D
+    D --> F{Need Framework Agnostic?}
+    F -->|Yes| G[Ark UI]
+    F -->|No| H[Radix UI]
+#+end_src
+
+** Notes
+[Your notes here]
+
+* Key Takeaways
+
+** React Concurrency
+- [Takeaway 1]
+- [Takeaway 2]
+
+** Headless UI Libraries
+- [Takeaway 1]
+- [Takeaway 2]
+
+* Action Items
+- [ ] Explore React 18 concurrency features in current project
+- [ ] Evaluate headless UI library for next project
+- [ ] Review streaming SSR implementation
+- [ ] Test concurrent rendering patterns
+
+* Networking Notes
+[People met, discussions, opportunities]
+
+* Resources & Links
+- [[https://react.dev/blog/2022/03/29/react-v18][React 18 Release Notes]]
+- [[https://github.com/ReactParis/talks][React Paris Talks Repo]]
+- [Additional resources from talks]
+
+* Follow-up Questions
+- [Questions to research]
+- [Topics to explore deeper]

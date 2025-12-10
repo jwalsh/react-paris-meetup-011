@@ -1,0 +1,26 @@
+# Jujutsu
+.jj/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+package-lock.json
+
+# Emacs
+*~
+\#*\#
+.#*
+*.elc
+auto-save-list
+tramp
+
+# Output
+diagrams/*.png
+*.html

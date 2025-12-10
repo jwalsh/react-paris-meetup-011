@@ -1,0 +1,1020 @@
+#+TITLE: React Paris Meetup #011 - December 10, 2024
+#+AUTHOR: jwalsh
+#+DATE: 2024-12-10
+#+STARTUP: overview
+#+PROPERTY: header-args:python :tangle ./src/analysis.py :mkdirp t
+
+* Event Metadata
+:PROPERTIES:
+:EVENT: React Paris Meetup #011
+:DATE: 2024-12-10
+:TIME: 19:00-22:00 CET
+:LOCATION: L'atelier, 46 rue de l'Arbre Sec, 75001 Paris
+:END:
+
+* Talk #1: Thinking Concurrently - React's New Mental Model
+:PROPERTIES:
+:SPEAKER: Ariel Shulman
+:COMPANY: Factify
+:ROLE: Full Stack Developer
+:LANGUAGE: English
+:SCOPE: React 16, 17, 18, 19
+:END:
+
+** Overview
+#+begin_quote
+"The most important addition in React 18 is something we hope you never have to think about: concurrency."
+— React 18 docs
+#+end_quote
+
+This talk covers the evolution of React's concurrency model across versions 16-19.
+
+** Concurrency vs Parallelism
+
+*** Definitions
+
+**** Concurrency
+- Multiple tasks making progress in overlapping time periods
+- About *dealing with* multiple things at once
+- Tasks can be interleaved and paused/resumed
+- Single-threaded execution with task switching
+- Example: JavaScript event loop, React Fiber
+
+**** Parallelism  
+- Multiple tasks executing simultaneously
+- About *doing* multiple things at once
+- Tasks run at the exact same time on multiple cores/threads
+- Requires multiple execution units
+- Example: Web Workers, multi-core processing
+
+*** Visual Comparison
+#+begin_src mermaid :file ./diagrams/concurrency-vs-parallelism.png :mkdirp t
+gantt
+    title Concurrency vs Parallelism
+    dateFormat X
+    axisFormat %L
+    
+    section Concurrent (Single Thread)
+    Task A :a1, 0, 2
+    Task B :a2, 2, 4
+    Task A :a3, 4, 6
+    Task C :a4, 6, 8
+    Task B :a5, 8, 10
+    
+    section Parallel (Multiple Threads)
+    Task A :b1, 0, 10
+    Task B :crit, b2, 0, 10
+    Task C :b3, 0, 10
+#+end_src
+
+*** In React Context
+
+**** Concurrency in React
+- React can start rendering an update
+- Pause it if something more urgent comes up
+- Resume the paused work later
+- Or abandon it entirely if no longer needed
+- All happening in a single JavaScript thread
+
+#+begin_src javascript
+// Concurrent rendering example
+function SearchPage() {
+  const [query, setQuery] = useState('');
+  const [isPending, startTransition] = useTransition();
+  
+  function handleChange(e) {
+    setQuery(e.target.value); // Urgent: runs immediately
+    
+    startTransition(() => {
+      // Non-urgent: can be interrupted
+      setResults(search(e.target.value));
+    });
+  }
+  
+  return <>{/* UI */}</>;
+}
+#+end_src
+
+**** Parallelism in React Context
+- Web Workers for heavy computation
+- Off-main-thread rendering (experimental)
+- Server-side parallel rendering of components
+
+#+begin_src javascript
+// Parallelism example with Web Workers
+const worker = new Worker('heavy-computation.js');
+
+worker.postMessage({ data: largeDataset });
+worker.onmessage = (e) => {
+  setResults(e.data); // Runs in parallel to main thread
+};
+#+end_src
+
+*** Key Differences for React Developers
+
+| Aspect | Concurrency | Parallelism |
+|--------|-------------|-------------|
+| Execution | Interleaved on single thread | Simultaneous on multiple threads |
+| React Implementation | Fiber architecture, Scheduler | Web Workers, Server parallelization |
+| Use Case | UI responsiveness, prioritization | Heavy computation, data processing |
+| Complexity | Task coordination, priority | Thread safety, data synchronization |
+| Available In | React 18+ (built-in) | Requires explicit setup |
+
+** React Version Timeline & Concurrency Evolution
+
+*** React 16 (2017)
+- Fiber architecture introduction
+- Foundation for concurrency
+- Async rendering capabilities (never exposed)
+- Time-slicing infrastructure
+
+*** React 17 (2020)
+- "No New Features" release
+- Gradual upgrades support
+- Event system improvements
+- Preparation for concurrent features
+
+*** React 18 (2022)
+- Concurrent rendering (opt-in)
+- Automatic batching
+- Transitions API (useTransition, useDeferredValue, startTransition)
+- Suspense improvements
+- Streaming SSR
+- Selective hydration
+
+*** React 19 (2024/2025)
+- Enhanced concurrent features
+- Actions and form handling
+- use() hook for promises/context
+- Ref as prop
+- Document metadata components
+- [Additional notes from talk]
+
+** Evolution Diagram
+#+begin_src mermaid :file ./diagrams/react-evolution.png :mkdirp t
+timeline
+    title React Concurrency Evolution (16-19)
+    2017 React 16 : Fiber Architecture
+                  : Foundation for async rendering
+                  : Time-slicing infrastructure
+                  : Never exposed to users
+    2020 React 17 : Stabilization release
+                  : Event system updates
+                  : Gradual upgrade path
+                  : Preparation for concurrent features
+    2022 React 18 : Concurrent Rendering
+                  : useTransition, useDeferredValue
+                  : Automatic batching everywhere
+                  : Streaming SSR with Suspense
+                  : Selective hydration
+    2024 React 19 : Actions & Form handling
+                  : use() hook
+                  : Enhanced concurrency
+                  : Production optimizations
+#+end_src
+
+** Key Concepts
+
+*** Fiber Architecture (React 16)
+- Reconciliation algorithm rewrite
+- Work can be paused and resumed
+- Priority-based rendering foundation
+- Incremental rendering capability
+
+*** Concurrent Mode vs Concurrent Features
+- "Concurrent Mode" (React 18 alpha) → abandoned term
+- "Concurrent Features" (React 18 stable) → opt-in APIs
+- Not an all-or-nothing mode
+- Gradual adoption possible
+
+*** Mental Model Shift: Synchronous → Concurrent
+
+**** Old Mental Model (React ≤17)
+#+begin_example
+setState() → render → commit → paint
+(blocking, all-or-nothing)
+#+end_example
+
+**** New Mental Model (React 18+)
+#+begin_example
+setState() → schedule work → prioritize → render (interruptible) → commit → paint
+(can pause, resume, or abandon)
+#+end_example
+
+*** Automatic Batching (React 18)
+
+**** Before React 18
+#+begin_src javascript
+// Only batched in event handlers
+function handleClick() {
+  setCount(c => c + 1);
+  setFlag(f => !f);  // Single re-render
+}
+
+// NOT batched
+setTimeout(() => {
+  setCount(c => c + 1);  // Re-render
+  setFlag(f => !f);      // Re-render (2 total)
+}, 1000);
+#+end_src
+
+**** React 18+
+#+begin_src javascript
+// Batched everywhere
+setTimeout(() => {
+  setCount(c => c + 1);
+  setFlag(f => !f);  // Single re-render
+}, 1000);
+
+fetch('/api').then(() => {
+  setCount(c => c + 1);
+  setFlag(f => !f);  // Single re-render
+});
+#+end_src
+
+*** Transitions API
+
+**** useTransition
+#+begin_src javascript
+import { useTransition } from 'react';
+
+function SearchResults() {
+  const [isPending, startTransition] = useTransition();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  
+  function handleChange(e) {
+    // Urgent: Update input immediately
+    setQuery(e.target.value);
+    
+    // Non-urgent: Update results (can be interrupted)
+    startTransition(() => {
+      setResults(searchData(e.target.value));
+    });
+  }
+  
+  return (
+    <div>
+      <input value={query} onChange={handleChange} />
+      {isPending && <Spinner />}
+      <ResultsList results={results} />
+    </div>
+  );
+}
+#+end_src
+
+**** useDeferredValue
+#+begin_src javascript
+import { useDeferredValue, memo } from 'react';
+
+function SearchPage({ query }) {
+  // Defer the expensive update
+  const deferredQuery = useDeferredValue(query);
+  
+  return (
+    <div>
+      <Input value={query} /> {/* Always current */}
+      <ResultsList query={deferredQuery} /> {/* May lag behind */}
+    </div>
+  );
+}
+
+// Memo prevents re-render when query hasn't changed
+const ResultsList = memo(function ResultsList({ query }) {
+  // Expensive operation
+  return <>{/* render results */}</>;
+});
+#+end_src
+
+**** startTransition
+#+begin_src javascript
+import { startTransition } from 'react';
+
+// Can be used outside components
+function updateChart(data) {
+  // Urgent: Show loading state
+  setIsLoading(true);
+  
+  // Non-urgent: Update chart (can be interrupted)
+  startTransition(() => {
+    setChartData(processData(data));
+    setIsLoading(false);
+  });
+}
+#+end_src
+
+*** SSR & Streaming Components
+
+**** Traditional SSR Problems
+- All-or-nothing data fetching
+- All-or-nothing HTML generation
+- All-or-nothing hydration
+- Slowest component blocks everything
+
+**** React 18 Streaming SSR
+#+begin_src javascript
+import { Suspense } from 'react';
+
+function App() {
+  return (
+    <Layout>
+      <Header />
+      <Suspense fallback={<Spinner />}>
+        {/* Can stream in later */}
+        <Comments />
+      </Suspense>
+      <Suspense fallback={<Spinner />}>
+        {/* Can stream in later */}
+        <Recommendations />
+      </Suspense>
+    </Layout>
+  );
+}
+
+// Server (Node.js)
+import { renderToPipeableStream } from 'react-dom/server';
+
+const { pipe } = renderToPipeableStream(<App />, {
+  onShellReady() {
+    // Send shell HTML immediately
+    response.setHeader('Content-Type', 'text/html');
+    pipe(response);
+  },
+  onAllReady() {
+    // All content ready (for crawlers)
+  },
+  onError(error) {
+    console.error(error);
+  }
+});
+#+end_src
+
+**** Selective Hydration
+- Hydrate high-priority components first
+- User interactions prioritize hydration
+- Partial hydration before full page ready
+
+*** Suspense Evolution
+
+**** React 16.6 - Code Splitting Only
+#+begin_src javascript
+const OtherComponent = lazy(() => import('./OtherComponent'));
+
+function MyComponent() {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <OtherComponent />
+    </Suspense>
+  );
+}
+#+end_src
+
+**** React 18 - Data Fetching
+#+begin_src javascript
+// With a Suspense-enabled data source
+function ProfilePage({ userId }) {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <ProfileDetails userId={userId} />
+      <Suspense fallback={<CommentsPlaceholder />}>
+        <ProfileComments userId={userId} />
+      </Suspense>
+    </Suspense>
+  );
+}
+#+end_src
+
+**** React 19 - use() Hook
+#+begin_src javascript
+import { use } from 'react';
+
+function ProfilePage({ userPromise }) {
+  // use() unwraps promises in render
+  const user = use(userPromise);
+  
+  return <h1>{user.name}</h1>;
+}
+
+// Usage
+<Suspense fallback={<Spinner />}>
+  <ProfilePage userPromise={fetchUser(id)} />
+</Suspense>
+#+end_src
+
+*** UX Principles & Concurrent Rendering
+
+**** Responsive UI
+- Input remains responsive during heavy updates
+- Visual feedback for all user actions
+- No "frozen" UI states
+
+**** Intentional Loading States
+- startTransition indicates "this can wait"
+- Avoid showing spinners for quick updates
+- Keep stale content visible during transitions
+
+**** Smooth Transitions
+- Avoid abrupt content replacement
+- Coordinate multiple state changes
+- Maintain scroll position and focus
+
+** Notes
+[Your notes from the talk]
+
+** Architecture Comparison: React 16 vs 18+
+#+begin_src mermaid :file ./diagrams/react-concurrent-comparison.png :mkdirp t
+graph TB
+    subgraph "React 16-17: Synchronous Rendering"
+        A1[Update Triggered] --> B1[Render Phase]
+        B1 --> C1[Commit Phase]
+        C1 --> D1[Browser Paint]
+        note1[Blocking: Cannot be interrupted<br/>All updates same priority]
+        style B1 fill:#ff6b6b
+    end
+    
+    subgraph "React 18-19: Concurrent Rendering"
+        A2[Update Triggered] --> B2{Scheduler:<br/>Check Priority}
+        B2 -->|Urgent| C2[Immediate Render]
+        B2 -->|Transition| D2[Interruptible Render]
+        C2 --> E2[Commit Phase]
+        D2 -.->|Can pause/resume| D2
+        D2 --> E2
+        E2 --> F2[Browser Paint]
+        note2[Non-blocking: Work can be paused<br/>Priority-based scheduling]
+        style B2 fill:#61dafb
+        style C2 fill:#90ee90
+        style D2 fill:#ffd700
+    end
+#+end_src
+
+** Concurrent Rendering Flow
+#+begin_src mermaid :file ./diagrams/concurrent-rendering-flow.png :mkdirp t
+sequenceDiagram
+    participant User
+    participant React
+    participant Scheduler
+    participant Browser
+    
+    User->>React: User types in input
+    React->>Scheduler: Schedule urgent update
+    Scheduler->>React: Process immediately
+    React->>Browser: Update input (sync)
+    Browser->>User: Instant feedback
+    
+    User->>React: Triggers search (in transition)
+    React->>Scheduler: Schedule non-urgent update
+    
+    alt No interruption
+        Scheduler->>React: Process when idle
+        React->>Browser: Update results
+        Browser->>User: Show results
+    else User types again (interruption)
+        User->>React: New urgent input
+        Scheduler->>React: Interrupt search update
+        React->>Browser: Update input first
+        Scheduler->>React: Abandon old search
+        Scheduler->>React: Start new search
+    end
+    
+    Note over React,Scheduler: Concurrent features allow<br/>interruption & prioritization
+#+end_src
+
+** Feature Matrix by Version
+#+begin_src python :tangle ./src/version_comparison.py :mkdirp t
+"""
+React version feature comparison (16-19)
+"""
+
+react_versions = {
+    "16.0-16.8": {
+        "year": "2017-2019",
+        "key_features": [
+            "Fiber architecture (internal)",
+            "Fragment support",
+            "Error boundaries",
+            "Portals",
+            "Hooks (16.8)",
+            "Async rendering foundation (hidden)"
+        ],
+        "concurrency": "foundation (not exposed)",
+        "ssr": "traditional renderToString",
+        "batching": "only in event handlers",
+        "suspense": "code splitting only (16.6+)"
+    },
+    "17": {
+        "year": 2020,
+        "key_features": [
+            "No new features (stabilization)",
+            "Gradual upgrades support",
+            "New JSX transform",
+            "Event delegation changes",
+            "Effect cleanup timing"
+        ],
+        "concurrency": "preparation phase",
+        "ssr": "traditional renderToString",
+        "batching": "only in event handlers",
+        "suspense": "code splitting only"
+    },
+    "18": {
+        "year": 2022,
+        "key_features": [
+            "Concurrent rendering (opt-in)",
+            "Automatic batching (everywhere)",
+            "Transitions API (useTransition, useDeferredValue, startTransition)",
+            "Suspense for data fetching",
+            "Streaming SSR (renderToPipeableStream)",
+            "Selective hydration",
+            "New root API (createRoot)",
+            "useId, useSyncExternalStore, useInsertionEffect"
+        ],
+        "concurrency": "full support (opt-in via APIs)",
+        "ssr": "streaming with selective hydration",
+        "batching": "automatic everywhere",
+        "suspense": "data fetching + code splitting"
+    },
+    "19": {
+        "year": "2024-2025",
+        "key_features": [
+            "Actions (async transitions with state)",
+            "useActionState, useFormStatus, useOptimistic",
+            "use() hook (promises + context)",
+            "Ref as prop (no forwardRef needed)",
+            "Document metadata (<title>, <meta> in components)",
+            "Asset loading (preloading)",
+            "Enhanced error reporting",
+            "Custom elements support improvements"
+        ],
+        "concurrency": "enhanced (Actions integrate transitions)",
+        "ssr": "streaming + async components",
+        "batching": "automatic + action batching",
+        "suspense": "use() hook for promise unwrapping"
+    }
+}
+
+def compare_versions():
+    """Compare React versions"""
+    for version, details in react_versions.items():
+        print(f"\nReact {version} ({details['year']})")
+        print(f"Concurrency: {details['concurrency']}")
+        print(f"SSR: {details['ssr']}")
+        print("Key features:")
+        for feature in details['key_features']:
+            print(f"  - {feature}")
+
+def analyze_concurrency_evolution():
+    """Analyze how concurrency evolved across versions"""
+    timeline = {
+        "16": "Foundation built (Fiber), not exposed to users",
+        "17": "Preparation, no breaking changes",
+        "18": "Public release, opt-in via new APIs",
+        "19": "Integration with forms, actions, better DX"
+    }
+    return timeline
+
+def migration_complexity():
+    """Rate migration complexity between versions"""
+    return {
+        "16->17": "low (mostly drop-in)",
+        "17->18": "medium (new root API, but compatible)",
+        "18->19": "low-medium (gradual adoption of new features)"
+    }
+#+end_src
+
+** Code Examples & Patterns
+
+*** React 19 Actions Example
+#+begin_src javascript
+import { useActionState } from 'react';
+
+function AddToCartButton({ productId }) {
+  const [state, submitAction, isPending] = useActionState(
+    async (previousState, formData) => {
+      const quantity = formData.get('quantity');
+      try {
+        await addToCart(productId, quantity);
+        return { success: true, message: 'Added to cart!' };
+      } catch (error) {
+        return { success: false, message: error.message };
+      }
+    },
+    { success: null, message: '' }
+  );
+  
+  return (
+    <form action={submitAction}>
+      <input name="quantity" type="number" defaultValue="1" />
+      <button disabled={isPending}>
+        {isPending ? 'Adding...' : 'Add to Cart'}
+      </button>
+      {state.message && <p>{state.message}</p>}
+    </form>
+  );
+}
+#+end_src
+
+*** React 19 use() Hook
+#+begin_src javascript
+import { use, Suspense } from 'react';
+
+// use() can unwrap promises
+function UserProfile({ userPromise }) {
+  const user = use(userPromise);
+  return <h1>{user.name}</h1>;
+}
+
+// use() can read context (alternative to useContext)
+function ThemedButton() {
+  const theme = use(ThemeContext);
+  return <button style={{ background: theme.bg }}>Click</button>;
+}
+
+// Usage
+function App() {
+  const userPromise = fetchUser(123);
+  
+  return (
+    <Suspense fallback={<Loading />}>
+      <UserProfile userPromise={userPromise} />
+    </Suspense>
+  );
+}
+#+end_src
+
+*** Optimistic Updates (React 19)
+#+begin_src javascript
+import { useOptimistic } from 'react';
+
+function TodoList({ todos }) {
+  const [optimisticTodos, addOptimisticTodo] = useOptimistic(
+    todos,
+    (state, newTodo) => [...state, { ...newTodo, pending: true }]
+  );
+  
+  async function handleSubmit(formData) {
+    const newTodo = { text: formData.get('text'), id: Date.now() };
+    
+    // Show optimistic UI immediately
+    addOptimisticTodo(newTodo);
+    
+    // Send to server
+    await saveTodo(newTodo);
+  }
+  
+  return (
+    <>
+      <form action={handleSubmit}>
+        <input name="text" />
+        <button>Add</button>
+      </form>
+      <ul>
+        {optimisticTodos.map(todo => (
+          <li key={todo.id} style={{ opacity: todo.pending ? 0.5 : 1 }}>
+            {todo.text}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+#+end_src
+
+** Migration Patterns
+
+*** From React 16/17 to 18
+
+**** Update Root API
+#+begin_src javascript
+// Old (React 17)
+import ReactDOM from 'react-dom';
+ReactDOM.render(<App />, document.getElementById('root'));
+
+// New (React 18)
+import { createRoot } from 'react-dom/client';
+const root = createRoot(document.getElementById('root'));
+root.render(<App />);
+#+end_src
+
+**** Opt-in to Concurrent Features
+#+begin_src javascript
+// Wrap expensive updates in transitions
+function handleChange(e) {
+  setValue(e.target.value);
+  
+  // Wrap expensive update
+  startTransition(() => {
+    setExpensiveValue(e.target.value);
+  });
+}
+#+end_src
+
+*** From React 18 to 19
+
+**** Replace forwardRef with ref prop
+#+begin_src javascript
+// Old (React 18)
+const MyInput = forwardRef((props, ref) => {
+  return <input ref={ref} {...props} />;
+});
+
+// New (React 19)
+function MyInput({ ref, ...props }) {
+  return <input ref={ref} {...props} />;
+}
+#+end_src
+
+**** Use Actions for forms
+#+begin_src javascript
+// Old (React 18)
+function Form() {
+  const [isPending, setIsPending] = useState(false);
+  
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setIsPending(true);
+    try {
+      await submitForm(new FormData(e.target));
+    } finally {
+      setIsPending(false);
+    }
+  }
+  
+  return <form onSubmit={handleSubmit}>...</form>;
+}
+
+// New (React 19)
+function Form() {
+  async function submitAction(formData) {
+    await submitForm(formData);
+  }
+  
+  return <form action={submitAction}>...</form>;
+}
+#+end_src
+
+** Performance Implications
+
+*** Measuring Concurrent Performance
+#+begin_src javascript
+// Use React DevTools Profiler
+import { Profiler } from 'react';
+
+function onRenderCallback(
+  id,
+  phase, // "mount" or "update"
+  actualDuration,
+  baseDuration,
+  startTime,
+  commitTime
+) {
+  console.log(`${id} (${phase}) took ${actualDuration}ms`);
+}
+
+<Profiler id="App" onRender={onRenderCallback}>
+  <App />
+</Profiler>
+#+end_src
+
+** Production Considerations
+
+*** When to Use Transitions
+- Heavy list filtering/sorting
+- Large data visualizations
+- Tab switching with expensive content
+- Search results updates
+
+*** When NOT to Use Transitions
+- Text input (needs to be immediate)
+- Critical user feedback
+- Small, fast updates
+
+*** Bundle Size Impact
+- React 18: ~6KB larger than React 17
+- React 19: Similar to React 18
+- Concurrent features: minimal additional cost (tree-shakeable)
+
+* Talk #2: Évolution des librairies UI et futures problématiques
+:PROPERTIES:
+:SPEAKER: Théo Senoussaoui
+:ROLE: Développeur Frontend
+:LOCATION: Paris
+:LANGUAGE: Français
+:END:
+
+** Overview
+Evolution from few headless UI libraries to an explosion of options: Radix, Headless UI, Ark UI, etc.
+
+** Key Topics
+
+*** Historical Context (Pre-2020)
+
+*** The Shift (2020-2022)
+
+*** Current Landscape (2022-2024)
+
+*** Selection Criteria
+
+*** Emerging Challenges
+
+** Notes
+[Your notes here]
+
+** Evolution Timeline
+#+begin_src mermaid :file ./diagrams/ui-libraries-timeline.png :mkdirp t
+timeline
+    title Evolution of Headless UI Libraries
+    2015-2018 : Styled Component Era
+              : Material-UI dominates
+              : Bootstrap React popular
+              : Everything comes pre-styled
+    2019-2020 : Tailwind CSS rises
+              : Demand for customization grows
+              : Headless UI concept emerges
+              : Radix UI launches (alpha)
+    2021-2022 : Headless Explosion
+              : Radix UI stable release
+              : Headless UI by Tailwind Labs
+              : React Aria by Adobe
+              : Accessibility becomes core focus
+    2023-2024 : Maturity & Fragmentation
+              : Ark UI (framework agnostic)
+              : Countless new libraries
+              : Decision fatigue sets in
+              : Consolidation begins?
+#+end_src
+
+** Library Selection Decision Tree
+#+begin_src mermaid :file ./diagrams/library-selection.png :mkdirp t
+graph TD
+    A[Need UI Components?] -->|Yes| B{Already Have Design System?}
+    B -->|No| Z[Use Complete Library<br/>Material-UI, Chakra, Mantine]
+    B -->|Yes| C{Using Tailwind CSS?}
+    C -->|Yes| D[Headless UI<br/>Perfect integration]
+    C -->|No| E{Need Framework Agnostic?}
+    E -->|Yes| F{Complex State Machines?}
+    E -->|No| G[Radix UI<br/>React-focused, popular]
+    F -->|Yes| H[Ark UI<br/>Zag.js powered]
+    F -->|No| I[React Aria<br/>Adobe, comprehensive]
+    
+    style A fill:#61dafb
+    style D fill:#06b6d4
+    style G fill:#8b5cf6
+    style H fill:#ffd700
+    style Z fill:#90ee90
+#+end_src
+
+** Library Comparison Matrix
+#+begin_src python :tangle ./src/library_comparison.py :mkdirp t
+"""
+Compare headless UI libraries based on talk insights
+"""
+
+libraries = {
+    "Radix UI": {
+        "accessibility": "excellent",
+        "customization": "high",
+        "bundle_size": "moderate",
+        "ecosystem": "large",
+        "framework": "react",
+        "typescript": "excellent",
+        "state_management": "built-in",
+        "documentation": "excellent",
+        "components": 30,
+        "github_stars": "15k+",
+        "learning_curve": "low-medium",
+        "notes": "Most popular, React-only, great docs"
+    },
+    "Headless UI": {
+        "accessibility": "excellent", 
+        "customization": "high",
+        "bundle_size": "small",
+        "ecosystem": "tailwind-focused",
+        "framework": "react/vue",
+        "typescript": "excellent",
+        "state_management": "simple",
+        "documentation": "good",
+        "components": 10,
+        "github_stars": "25k+",
+        "learning_curve": "low",
+        "notes": "Tailwind Labs, minimal but solid, perfect for Tailwind users"
+    },
+    "Ark UI": {
+        "accessibility": "excellent",
+        "customization": "very high",
+        "bundle_size": "moderate",
+        "ecosystem": "growing",
+        "framework": "agnostic (react/vue/solid)",
+        "typescript": "excellent",
+        "state_management": "state-machines (Zag.js)",
+        "documentation": "good",
+        "components": 45,
+        "github_stars": "3k+",
+        "learning_curve": "medium-high",
+        "notes": "Framework agnostic, Zag.js powered, most flexible"
+    },
+    "React Aria": {
+        "accessibility": "excellent",
+        "customization": "high",
+        "bundle_size": "moderate",
+        "ecosystem": "adobe (spectrum)",
+        "framework": "react",
+        "typescript": "excellent",
+        "state_management": "hooks-based",
+        "documentation": "excellent",
+        "components": 40,
+        "github_stars": "12k+",
+        "learning_curve": "medium",
+        "notes": "Adobe, very comprehensive, enterprise-ready"
+    },
+    "Downshift": {
+        "accessibility": "good",
+        "customization": "very high",
+        "bundle_size": "small",
+        "ecosystem": "legacy but stable",
+        "framework": "react",
+        "typescript": "good",
+        "state_management": "render props/hooks",
+        "documentation": "good",
+        "components": 5,
+        "github_stars": "12k+",
+        "learning_curve": "medium",
+        "notes": "Pioneer in headless, focused on select/combobox/autocomplete"
+    }
+}
+
+def compare_libraries(criteria):
+    """Compare libraries based on given criteria"""
+    pass
+
+def analyze_bundle_sizes():
+    """Analyze and compare bundle sizes"""
+    pass
+
+def evaluate_accessibility_scores():
+    """Evaluate accessibility implementation"""
+    pass
+
+def recommend_library(requirements):
+    """
+    Recommend library based on project requirements
+    
+    Args:
+        requirements: dict with keys like 'framework', 'design_system', etc.
+    """
+    pass
+#+end_src
+
+** Technical Deep Dive
+
+*** Architecture Patterns
+
+**** Compound Components
+#+begin_src javascript
+// Example: Radix-style API
+<Select.Root>
+  <Select.Trigger>
+    <Select.Value placeholder="Select..." />
+  </Select.Trigger>
+  <Select.Content>
+    <Select.Item value="1">Option 1</Select.Item>
+    <Select.Item value="2">Option 2</Select.Item>
+  </Select.Content>
+</Select.Root>
+#+end_src
+
+**** Render Props (older pattern)
+#+begin_src javascript
+// Example: Downshift
+<Downshift>
+  {({ getInputProps, getItemProps, isOpen }) => (
+    <div>
+      <input {...getInputProps()} />
+      {isOpen && (
+        <ul>
+          {items.map((item, index) => (
+            <li {...getItemProps({ item, index })}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )}
+</Downshift>
+#+end_src
+
+**** Hooks-based
+#+begin_src javascript
+// Example: React Aria
+import { useButton } from '@react-aria/button';
+
+function Button(props) {
+  let ref = useRef();
+  let { buttonProps } = useButton(props, ref);
+  return <button {...buttonProps} ref={ref}>{props.children}</button>;
+}
+#+end_src
+
+**** State Machines (Zag.js / Ark UI)
+#+begin_src javascript
+// Ark UI uses Zag.js under the hood
+// Provides predictable state management
+<Dialog.Root>
+  <Dialog.Trigger>Open</Dialog.Trigger>
