@@ -1,0 +1,950 @@
+#+TITLE: React 19 Concurrency: What, Why, and How
+#+AUTHOR: React Paris Meetup #011
+#+DATE: 2025
+#+OPTIONS: toc:2 num:nil
+#+REVEAL_THEME: black
+#+REVEAL_TRANS: slide
+
+* React Paris Meetup #011
+
+** Tonight's Talks
+
+*** Talk 1: Conquering React Concurrency
+*Ariel Shulman*
+
+Deep dive into React's concurrent rendering model and practical patterns.
+
+*** Talk 2: Evolution des librairies UI et futures problematiques
+*Theo Senoussaoui*
+
+The evolution of UI libraries and future challenges in the React ecosystem.
+
+** Companion Materials
+
+This presentation provides supplementary notes covering:
+- Concurrency fundamentals
+- React 16-19 evolution
+- ClojureScript comparisons (Reagent, re-frame, core.async)
+- 10 practice projects
+
+Repository: https://github.com/jwalsh/react-paris-meetup-011
+
+* Concurrency vs. Parallelism
+
+** The Classic Distinction
+
+*** Concurrency
+- *Dealing* with multiple things at once
+- Single core, interleaved execution
+- About *structure*
+- "Managing multiple tasks"
+
+*** Parallelism
+- *Doing* multiple things at once
+- Multiple cores, simultaneous execution
+- About *execution*
+- "Running multiple tasks"
+
+** Visual Analogy
+
+#+BEGIN_SRC text
+CONCURRENCY (Single Chef, Multiple Dishes)
++-------------------------------------------+
+| [eggs] Start -> [toast] Start ->          |
+| [eggs] Flip  -> [toast] Butter ->         |
+| [eggs] Plate -> [toast] Plate             |
++-------------------------------------------+
+
+PARALLELISM (Multiple Chefs, Multiple Dishes)
++-------------------------------------------+
+| Chef 1: eggs  -> flip   -> plate          |
+| Chef 2: toast -> butter -> plate          |
++-------------------------------------------+
+#+END_SRC
+
+** JavaScript's Event Loop
+
+#+BEGIN_SRC text
++--------------------------------------------------+
+|                    CALL STACK                    |
+|  (synchronous, single-threaded execution)        |
++--------------------------------------------------+
+           |                      ^
+           v                      |
++------------------+    +------------------+
+|   WEB APIs       |    |   CALLBACK       |
+|  (setTimeout,    |--->|   QUEUE          |
+|   fetch, etc.)   |    |                  |
++------------------+    +------------------+
+                               |
+                               v
+                    +------------------+
+                    |   EVENT LOOP     |
+                    | (checks if stack |
+                    |  is empty)       |
+                    +------------------+
+#+END_SRC
+
+** JavaScript Context
+
+#+BEGIN_SRC javascript
+// JavaScript is SINGLE-THREADED
+// But can handle CONCURRENCY via event loop
+
+// This is CONCURRENT (not parallel)
+async function fetchData() {
+  const [users, posts] = await Promise.all([
+    fetch('/users'),
+    fetch('/posts')
+  ]);
+}
+
+// True PARALLELISM requires Web Workers
+const worker = new Worker('heavy-task.js');
+#+END_SRC
+
+* The Evolution of React Concurrency
+
+** Timeline: React 10-19
+
+| Version | Year | Key Concurrency Features                    |
+|---------+------+---------------------------------------------|
+| 10-15   | 2014-2016 | Stack reconciler (synchronous)         |
+| 16      | 2017 | Fiber architecture (foundation)             |
+| 16.6    | 2018 | Suspense for code splitting                 |
+| 17      | 2020 | Gradual upgrades, event delegation          |
+| 18      | 2022 | Concurrent rendering, useTransition         |
+| 19      | 2024 | use() hook, Actions, improved Suspense      |
+| 19.2    | 2025 | Activity API, useEffectEvent                |
+
+** React 16: The Fiber Revolution (2017)
+
+*** What Changed
+- Complete rewrite of reconciliation algorithm
+- Stack-based -> Fiber (linked list)
+- Foundation for all future concurrency
+
+*** Key Innovation: Interruptible Work
+
+#+BEGIN_SRC text
+STACK RECONCILER (React 15):
+  render() -> render() -> render() -> DONE
+  [=================================]
+  Cannot stop once started
+
+FIBER RECONCILER (React 16+):
+  render() -> PAUSE -> render() -> PAUSE -> DONE
+  [======]   yield   [======]    yield
+  Can pause and resume
+#+END_SRC
+
+** React 18: Concurrent Rendering (2022)
+
+*** New Primitives
+- ~useTransition~ - mark updates as non-urgent
+- ~useDeferredValue~ - defer expensive values
+- ~useSyncExternalStore~ - external store integration
+- ~useId~ - stable IDs for SSR
+
+*** Automatic Batching
+
+#+BEGIN_SRC javascript
+// React 17: Only batched in event handlers
+// React 18: Batched everywhere
+
+setTimeout(() => {
+  setCount(c => c + 1);  // Now batched
+  setFlag(f => !f);      // Single re-render
+}, 1000);
+#+END_SRC
+
+** React 19: The use() Era (2024)
+
+*** New Features
+- ~use()~ hook for promises and context
+- Actions (~useActionState~, ~useFormStatus~)
+- ~useOptimistic~ for instant feedback
+- Document metadata (~<title>~, ~<meta>~)
+- Ref as prop (no more forwardRef)
+
+** React 19.2: Activity API (2025)
+
+*** Activity Component
+- Keep UI mounted but hidden
+- Preserve state while unmounting effects
+- Render with lower priority when hidden
+
+#+BEGIN_SRC javascript
+<Activity mode={isActive ? "visible" : "hidden"}>
+  <ExpensiveComponent />
+</Activity>
+#+END_SRC
+
+* Classic Concurrency Patterns
+
+** Throttle vs Debounce vs Defer
+
+#+BEGIN_SRC text
+INPUT:     x]
+TIME:      0----1----2----3----4----5----6----7
+
+THROTTLE (max once per 2s):
+OUTPUT:    x---------x---------x---------x
+           ^         ^         ^         ^
+           first     allowed   allowed   allowed
+
+DEBOUNCE (wait 2s after last):
+OUTPUT:    ----------------------------x
+                                       ^
+                                       fires after quiet period
+
+DEFER (React's useDeferredValue):
+OUTPUT:    x-x-x-x---x---------x-------x
+           ^         ^         ^       ^
+           immediate but yields to urgent work
+#+END_SRC
+
+** Throttle Implementation
+
+#+BEGIN_SRC typescript
+function throttle<T extends (...args: any[]) => any>(
+  fn: T,
+  limit: number
+): (...args: Parameters<T>) => void {
+  let lastCall = 0;
+
+  return (...args: Parameters<T>) => {
+    const now = Date.now();
+    if (now - lastCall >= limit) {
+      lastCall = now;
+      fn(...args);
+    }
+  };
+}
+
+// Usage: max once per 100ms
+const throttledScroll = throttle(handleScroll, 100);
+window.addEventListener('scroll', throttledScroll);
+#+END_SRC
+
+** Debounce Implementation
+
+#+BEGIN_SRC typescript
+function debounce<T extends (...args: any[]) => any>(
+  fn: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: ReturnType<typeof setTimeout>;
+
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+}
+
+// Usage: wait 300ms after typing stops
+const debouncedSearch = debounce(search, 300);
+input.addEventListener('input', debouncedSearch);
+#+END_SRC
+
+** React's Built-in Alternative
+
+#+BEGIN_SRC typescript
+// Instead of manual debounce, use useDeferredValue
+function SearchResults({ query }: { query: string }) {
+  const deferredQuery = useDeferredValue(query);
+
+  // Advantages over debounce:
+  // 1. No fixed delay - renders ASAP when idle
+  // 2. Interruptible - yields to urgent updates
+  // 3. Shows stale content (no blank states)
+
+  const isStale = query !== deferredQuery;
+
+  return (
+    <div style={{ opacity: isStale ? 0.7 : 1 }}>
+      <Results query={deferredQuery} />
+    </div>
+  );
+}
+#+END_SRC
+
+* CSP and core.async: A Different Model
+
+** Communicating Sequential Processes (CSP)
+
+*** Origin
+- Tony Hoare, 1978
+- Foundation for Go's goroutines
+- ClojureScript's core.async
+
+*** Core Idea
+
+#+BEGIN_SRC text
++----------+                    +----------+
+| Process  |                    | Process  |
+|    A     |---> [Channel] --->|    B     |
+|          |                    |          |
++----------+                    +----------+
+
+- Processes are independent
+- Communicate via channels
+- Blocking put/take operations
+- No shared mutable state
+#+END_SRC
+
+** core.async in ClojureScript
+
+*** Channels and Go Blocks
+
+#+BEGIN_SRC clojure
+(ns demo.core
+  (:require [cljs.core.async :refer [chan go <! >! timeout]]))
+
+;; Create a channel
+(def clicks (chan))
+
+;; Producer: put clicks on channel
+(defn on-click [event]
+  (go (>! clicks event)))
+
+;; Consumer: process clicks
+(go
+  (loop []
+    (let [event (<! clicks)]
+      (println "Clicked:" (.-target event))
+      (recur))))
+#+END_SRC
+
+** Debounce with core.async
+
+#+BEGIN_SRC clojure
+(ns demo.debounce
+  (:require [cljs.core.async :refer [chan go <! >! timeout alts!]]))
+
+(defn debounce [in-ch ms]
+  (let [out-ch (chan)]
+    (go
+      (loop [last-val nil]
+        (let [[val ch] (alts! [in-ch (timeout ms)])]
+          (condp = ch
+            in-ch   (recur val)           ; New value, restart timer
+            :else   (when last-val        ; Timeout, emit value
+                      (>! out-ch last-val)
+                      (recur nil))))))
+    out-ch))
+
+;; Usage
+(def input-ch (chan))
+(def debounced-ch (debounce input-ch 300))
+
+(go
+  (loop []
+    (let [val (<! debounced-ch)]
+      (search! val)
+      (recur))))
+#+END_SRC
+
+** Throttle with core.async
+
+#+BEGIN_SRC clojure
+(ns demo.throttle
+  (:require [cljs.core.async :refer [chan go <! >! timeout]]))
+
+(defn throttle [in-ch ms]
+  (let [out-ch (chan)]
+    (go
+      (loop []
+        (let [val (<! in-ch)]
+          (>! out-ch val)
+          (<! (timeout ms))  ; Wait before allowing next
+          (recur))))
+    out-ch))
+
+;; Usage
+(def scroll-ch (chan))
+(def throttled-ch (throttle scroll-ch 100))
+
+(go
+  (loop []
+    (let [pos (<! throttled-ch)]
+      (update-ui! pos)
+      (recur))))
+#+END_SRC
+
+** Comparing Approaches
+
+| Aspect              | React Concurrent      | core.async           |
+|---------------------+-----------------------+----------------------|
+| Model               | Priority lanes        | CSP channels         |
+| Scheduling          | Framework-managed     | Developer-controlled |
+| Cancellation        | Automatic (re-render) | Manual               |
+| Mental model        | Declarative           | Imperative processes |
+| Best for            | UI responsiveness     | Complex async flows  |
+
+* Why Concurrency Matters in React
+
+** The Problem: Blocking Renders
+
+#+BEGIN_SRC javascript
+// Without concurrency - UI freezes
+function App() {
+  const [items, setItems] = useState([]);
+
+  // BAD: Typing is blocked while list renders
+  return (
+    <>
+      <SearchInput onChange={filterItems} />
+      <HugeList items={items} /> {/* 10,000 items */}
+    </>
+  );
+}
+#+END_SRC
+
+** The Solution: Interruptible Rendering
+
+#+BEGIN_SRC javascript
+// With React 19 concurrency - UI stays responsive
+function App() {
+  const [items, setItems] = useState([]);
+  const deferredItems = useDeferredValue(items);
+
+  // GOOD: Input responds instantly
+  // GOOD: List renders when there's time
+  return (
+    <>
+      <SearchInput onChange={filterItems} />
+      <HugeList items={deferredItems} />
+    </>
+  );
+}
+#+END_SRC
+
+* React 19 Concurrency Primitives
+
+** Overview
+
+| Primitive           | Purpose                        | Priority |
+|---------------------+--------------------------------+----------|
+| ~<Suspense>~        | Async loading boundaries       | Normal   |
+| ~<Activity>~        | Show/hide without unmount      | Variable |
+| ~useTransition~     | Mark updates as non-urgent     | Low      |
+| ~useDeferredValue~  | Defer expensive computations   | Low      |
+| ~use()~             | Unwrap promises in render      | Normal   |
+
+** ~<Suspense>~
+
+*** What It Does
+- Declarative loading states
+- Catches "suspended" components
+- Shows fallback while waiting
+
+*** Example
+
+#+BEGIN_SRC javascript
+import { Suspense } from 'react';
+
+function App() {
+  return (
+    <Suspense fallback={<Skeleton />}>
+      <UserProfile />  {/* May suspend */}
+    </Suspense>
+  );
+}
+
+// Component that suspends
+function UserProfile() {
+  const user = use(fetchUser()); // Suspends until resolved
+  return <div>{user.name}</div>;
+}
+#+END_SRC
+
+** ~<Activity>~
+
+*** What It Does
+- Formerly called ~<Offscreen>~
+- Preserves state when hidden
+- Pre-renders content at low priority
+- Like CSS ~visibility: hidden~ but smarter
+
+*** Modes
+
+| Mode      | Rendered | Visible | Priority |
+|-----------+----------+---------+----------|
+| ~visible~ | Yes      | Yes     | Normal   |
+| ~hidden~  | Yes      | No      | Low      |
+
+*** Example: Tabs Without State Loss
+
+#+BEGIN_SRC javascript
+import { Activity } from 'react';
+
+function TabContainer({ activeTab }) {
+  return (
+    <>
+      <Activity mode={activeTab === 'home' ? 'visible' : 'hidden'}>
+        <HomePage />  {/* State preserved when hidden */}
+      </Activity>
+
+      <Activity mode={activeTab === 'profile' ? 'visible' : 'hidden'}>
+        <ProfilePage />  {/* Pre-rendered, ready instantly */}
+      </Activity>
+    </>
+  );
+}
+#+END_SRC
+
+*** Example: Pre-rendering
+
+#+BEGIN_SRC javascript
+function App() {
+  const [showModal, setShowModal] = useState(false);
+
+  return (
+    <>
+      <button onClick={() => setShowModal(true)}>
+        Open Settings
+      </button>
+
+      {/* Pre-render modal at low priority */}
+      <Activity mode={showModal ? 'visible' : 'hidden'}>
+        <SettingsModal onClose={() => setShowModal(false)} />
+      </Activity>
+    </>
+  );
+}
+#+END_SRC
+
+** ~useTransition~
+
+*** What It Does
+- Marks state updates as non-urgent
+- Keeps UI responsive during updates
+- Provides ~isPending~ for loading states
+
+*** Example
+
+#+BEGIN_SRC javascript
+import { useTransition } from 'react';
+
+function SearchResults() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isPending, startTransition] = useTransition();
+
+  function handleSearch(e) {
+    // Urgent: update input immediately
+    setQuery(e.target.value);
+
+    // Non-urgent: filter can wait
+    startTransition(() => {
+      setResults(filterLargeDataset(e.target.value));
+    });
+  }
+
+  return (
+    <>
+      <input value={query} onChange={handleSearch} />
+      {isPending && <Spinner />}
+      <ResultsList results={results} />
+    </>
+  );
+}
+#+END_SRC
+
+** ~useDeferredValue~
+
+*** What It Does
+- Defers updating a value
+- Simpler than ~useTransition~
+- Good for derived/computed values
+
+*** Example
+
+#+BEGIN_SRC javascript
+import { useDeferredValue, useMemo } from 'react';
+
+function FilteredList({ items, filter }) {
+  // Deferred version of filter
+  const deferredFilter = useDeferredValue(filter);
+
+  // Expensive computation uses deferred value
+  const filteredItems = useMemo(
+    () => items.filter(item =>
+      item.name.includes(deferredFilter)
+    ),
+    [items, deferredFilter]
+  );
+
+  // Show stale indicator
+  const isStale = filter !== deferredFilter;
+
+  return (
+    <div style={{ opacity: isStale ? 0.7 : 1 }}>
+      {filteredItems.map(item => (
+        <Item key={item.id} {...item} />
+      ))}
+    </div>
+  );
+}
+#+END_SRC
+
+** ~use()~ Hook
+
+*** What It Does
+- New in React 19
+- Unwraps promises and context
+- Can be called conditionally
+- Suspends component until resolved
+
+*** Example with Promises
+
+#+BEGIN_SRC javascript
+import { use, Suspense } from 'react';
+
+// Can be created outside component
+const dataPromise = fetch('/api/data').then(r => r.json());
+
+function DataDisplay() {
+  // Suspends until promise resolves
+  const data = use(dataPromise);
+
+  return <div>{data.title}</div>;
+}
+
+function App() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <DataDisplay />
+    </Suspense>
+  );
+}
+#+END_SRC
+
+*** Example with Context
+
+#+BEGIN_SRC javascript
+import { use } from 'react';
+
+function ConditionalTheme({ showTheme }) {
+  // Can call conditionally (unlike useContext)
+  if (showTheme) {
+    const theme = use(ThemeContext);
+    return <div style={{ color: theme.primary }}>Themed!</div>;
+  }
+  return <div>No theme</div>;
+}
+#+END_SRC
+
+* Combining Primitives
+
+** Pattern: Responsive Tabs
+
+#+BEGIN_SRC javascript
+function App() {
+  const [activeTab, setActiveTab] = useState('home');
+  const [isPending, startTransition] = useTransition();
+
+  function switchTab(tab) {
+    startTransition(() => {
+      setActiveTab(tab);
+    });
+  }
+
+  return (
+    <>
+      <TabBar
+        active={activeTab}
+        onChange={switchTab}
+        loading={isPending}
+      />
+
+      <Activity mode={activeTab === 'home' ? 'visible' : 'hidden'}>
+        <Suspense fallback={<HomeSkeleton />}>
+          <HomePage />
+        </Suspense>
+      </Activity>
+
+      <Activity mode={activeTab === 'search' ? 'visible' : 'hidden'}>
+        <Suspense fallback={<SearchSkeleton />}>
+          <SearchPage />
+        </Suspense>
+      </Activity>
+    </>
+  );
+}
+#+END_SRC
+
+** Pattern: Optimistic Updates
+
+#+BEGIN_SRC javascript
+import { useOptimistic, useTransition } from 'react';
+
+function LikeButton({ postId, initialLikes }) {
+  const [likes, setLikes] = useState(initialLikes);
+  const [optimisticLikes, addOptimistic] = useOptimistic(
+    likes,
+    (current, increment) => current + increment
+  );
+  const [isPending, startTransition] = useTransition();
+
+  async function handleLike() {
+    addOptimistic(1); // Instant UI update
+
+    startTransition(async () => {
+      const newCount = await likePost(postId);
+      setLikes(newCount); // Sync with server
+    });
+  }
+
+  return (
+    <button onClick={handleLike} disabled={isPending}>
+      Like {optimisticLikes}
+    </button>
+  );
+}
+#+END_SRC
+
+* How React Scheduler Works
+
+** Time Slicing
+
+#+BEGIN_SRC text
+Traditional Rendering:
++----------------------------------------+
+| Render Component Tree (blocks 200ms)   |
++----------------------------------------+
+BAD: User input ignored for 200ms
+
+Concurrent Rendering:
++------+ +------+ +------+ +------+
+|Render| |Yield | |Render| |Yield | ...
++------+ +------+ +------+ +------+
+           ^ Check for user input
+GOOD: UI stays responsive
+#+END_SRC
+
+** Priority Lanes
+
+#+BEGIN_SRC text
+React schedules work in priority lanes:
+
++------------------+----------------------+
+| Sync Lane        | Click handlers       | <- Immediate
++------------------+----------------------+
+| Input Lane       | Typing, key presses  | <- Very High
++------------------+----------------------+
+| Default Lane     | Normal state updates | <- Normal
++------------------+----------------------+
+| Transition Lane  | useTransition        | <- Low
++------------------+----------------------+
+| Idle Lane        | Activity hidden      | <- Very Low
++------------------+----------------------+
+#+END_SRC
+
+* Best Practices
+
+** When to Use What
+
+| Scenario                    | Solution                    |
+|-----------------------------+-----------------------------|
+| Loading async data          | ~<Suspense>~ + ~use()~      |
+| Tabs/routes state preserved | ~<Activity>~                |
+| Expensive list filtering    | ~useDeferredValue~          |
+| Non-urgent state update     | ~useTransition~             |
+| Pre-render likely-needed UI | ~<Activity mode="hidden">~  |
+| Instant feedback            | ~useOptimistic~             |
+
+** Performance Tips
+
+1. *Wrap expensive subtrees* in ~<Activity>~ or ~Suspense~
+2. *Use transitions* for updates that don't need instant feedback
+3. *Defer values* that drive expensive computations
+4. *Pre-render* content users are likely to see
+5. *Don't over-optimize* - profile first!
+
+** Common Mistakes
+
+#+BEGIN_SRC javascript
+// BAD: Transition for urgent updates
+startTransition(() => {
+  setInputValue(e.target.value); // User expects instant feedback
+});
+
+// GOOD: Transition for non-urgent updates
+setInputValue(e.target.value); // Instant
+startTransition(() => {
+  setSearchResults(search(e.target.value)); // Can wait
+});
+
+// BAD: Suspense without fallback
+<Suspense>
+  <AsyncComponent />
+</Suspense>
+
+// GOOD: Always provide fallback
+<Suspense fallback={<Skeleton />}>
+  <AsyncComponent />
+</Suspense>
+#+END_SRC
+
+* Summary
+
+** Key Takeaways
+
+1. *Concurrency* = managing multiple tasks (structure)
+2. *Parallelism* = executing multiple tasks (execution)
+3. React uses *concurrency* to keep UI responsive
+4. *Interruptible rendering* lets urgent updates cut in line
+5. Use the right primitive for the job
+
+** The Mental Model
+
+#+BEGIN_SRC text
+User clicks button while list renders:
+
+OLD REACT:
+  [========= Render List =========] -> [Handle Click]
+  300ms delay (bad)
+
+REACT 19:
+  [=== Render ===] PAUSE [Click!] -> [=== Resume ===]
+  Instant response (good)
+#+END_SRC
+
+** Resources
+
+- [[https://react.dev/blog/2024/12/05/react-19][React 19 Blog Post]]
+- [[https://react.dev/blog/2022/03/29/react-v18][React 18 Release Notes]]
+- [[https://react.dev/reference/react/Suspense][Suspense Documentation]]
+- [[https://react.dev/reference/react/useTransition][useTransition Documentation]]
+- [[https://github.com/reactwg/react-18/discussions][React Working Group Discussions]]
+- [[https://clojure.org/news/2013/06/28/clojure-clore-async-channels][Clojure core.async Channels]]
+- [[https://www.braveclojure.com/core-async/][Mastering core.async]]
+
+* Reagent and re-frame (ClojureScript)
+
+** Reagent: ClojureScript + React
+
+*** What Is It?
+- Minimalistic React wrapper for ClojureScript
+- Hiccup syntax instead of JSX
+- Reactive atoms (RAtoms) for state
+- Predates React Hooks by years
+
+*** Example Component
+
+#+BEGIN_SRC clojure
+(def counter (r/atom 0))
+
+(defn counter-view []
+  [:div
+   [:p "Count: " @counter]
+   [:button {:on-click #(swap! counter inc)} "+"]])
+#+END_SRC
+
+** re-frame: Unidirectional Data Flow
+
+*** Architecture
+
+#+BEGIN_SRC text
++------------+     +-------------+     +--------+
+|   Events   | --> |   Handlers  | --> | App DB |
+| (dispatch) |     | (pure fns)  |     | (atom) |
++------------+     +-------------+     +--------+
+                                            |
+                                            v
++------------+     +---------------+
+|   Views    | <-- | Subscriptions |
+| (reagent)  |     | (derived)     |
++------------+     +---------------+
+#+END_SRC
+
+*** Key Concepts
+
+#+BEGIN_SRC clojure
+;; Event handler (pure function)
+(rf/reg-event-db :increment
+  (fn [db [_ amount]]
+    (update db :count + amount)))
+
+;; Subscription (derived data)
+(rf/reg-sub :count
+  (fn [db _] (:count db)))
+
+;; View (reactive)
+(defn counter []
+  (let [count @(rf/subscribe [:count])]
+    [:button {:on-click #(rf/dispatch [:increment 1])}
+     count]))
+#+END_SRC
+
+** Current Status (2025)
+
+*** Compatibility Matrix
+
+| React Version | Reagent Support | Notes                      |
+|---------------+-----------------+----------------------------|
+| React 17      | Full            | Stable, production-ready   |
+| React 18      | Partial         | Legacy render API works    |
+| React 19      | Incompatible    | Class component conflicts  |
+
+*** The Challenge
+- Reagent built on class components
+- React 19 deprecates class patterns
+- Concurrent features inaccessible
+
+*** Alternatives
+- *UIx2*: Hooks-first wrapper
+- *Helix*: Modern ClojureScript React
+- *HSX/RFX*: Custom Hiccup + hooks
+
+** React 19 vs re-frame Patterns
+
+| Concept           | React 19                    | re-frame              |
+|-------------------+-----------------------------+-----------------------|
+| State             | useState, useReducer        | Single atom (app-db)  |
+| Derived data      | useMemo                     | Subscriptions         |
+| Side effects      | useEffect, Actions          | reg-event-fx, reg-fx  |
+| Priority          | useTransition               | Not built-in          |
+| Async coordination | Suspense, use()            | dispatch-n, effects   |
+
+* Practice Projects
+
+** 10 Concurrency-Focused Projects
+
+| # | Project               | Key Concurrency Pattern        |
+|---+-----------------------+--------------------------------|
+| 1 | Typeahead Search      | useDeferredValue / debounce    |
+| 2 | Modal Dialog System   | Activity pre-rendering         |
+| 3 | Infinite Scroll       | Throttle + virtualization      |
+| 4 | Form Validation       | Async validation + debounce    |
+| 5 | Image Carousel        | Preloading + transitions       |
+| 6 | Notifications         | Priority queuing               |
+| 7 | Data Table            | Deferred sort/filter           |
+| 8 | Multi-step Wizard     | Step pre-rendering             |
+| 9 | Collaborative Editor  | Optimistic updates + merging   |
+| 10| Live Dashboard        | Staggered refresh + isolation  |
+
+** See ~docs/projects.org~ for Full Specs
+
+Each project includes:
+- Functional requirements
+- Concurrency focus areas
+- React 19 implementation hints
+- Reagent/re-frame implementation hints
+- Bonus challenges
+
+* Questions?
+
+#+BEGIN_CENTER
+Thank you!
+
+React Paris Meetup #011
+
+*Speakers:*
+Ariel Shulman - Conquering React Concurrency
+Theo Senoussaoui - Evolution des librairies UI
+
+*Materials:* github.com/jwalsh/react-paris-meetup-011
+#+END_CENTER

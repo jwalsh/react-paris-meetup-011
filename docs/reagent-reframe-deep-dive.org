@@ -1,0 +1,487 @@
+#+TITLE: Reagent and re-frame: Deep Dive
+#+AUTHOR: React Paris Meetup #011
+#+DATE: 2025
+#+OPTIONS: toc:3 num:t
+
+* Overview
+
+This document provides a deep dive into Reagent and re-frame, the dominant
+ClojureScript libraries for building React applications, with special attention
+to concurrency patterns and their current status in 2025.
+
+* Reagent
+
+** What is Reagent?
+
+Reagent is a minimalistic ClojureScript interface to React. It provides:
+
+- Hiccup-like syntax for components (instead of JSX)
+- Reactive atoms (RAtoms) for state management
+- Automatic re-rendering when state changes
+- Function components as the primary abstraction
+
+** Core Concepts
+
+*** Hiccup Syntax
+
+#+BEGIN_SRC clojure
+;; JSX equivalent: <div className="container"><h1>Hello</h1></div>
+[:div.container
+ [:h1 "Hello"]]
+
+;; With attributes
+[:button {:on-click #(println "clicked")
+          :class "primary"}
+ "Click me"]
+#+END_SRC
+
+*** Reactive Atoms (RAtoms)
+
+#+BEGIN_SRC clojure
+(ns my-app.core
+  (:require [reagent.core :as r]))
+
+;; Create a reactive atom
+(def counter (r/atom 0))
+
+;; Component that reacts to atom changes
+(defn counter-display []
+  [:div
+   [:p "Count: " @counter]
+   [:button {:on-click #(swap! counter inc)} "+"]])
+
+;; When counter changes, counter-display automatically re-renders
+#+END_SRC
+
+*** Component Types
+
+#+BEGIN_SRC clojure
+;; Form-1: Simple function (like React function component)
+(defn greeting [name]
+  [:h1 "Hello, " name])
+
+;; Form-2: Function returning render function (for setup logic)
+(defn timer []
+  (let [seconds (r/atom 0)]
+    (fn []
+      [:div "Elapsed: " @seconds " seconds"])))
+
+;; Form-3: Full lifecycle (like React class component)
+(defn lifecycle-component []
+  (r/create-class
+   {:component-did-mount (fn [this] (println "Mounted"))
+    :component-will-unmount (fn [this] (println "Unmounting"))
+    :reagent-render (fn [] [:div "Lifecycle component"])}))
+#+END_SRC
+
+** Concurrency in Reagent
+
+*** Batched Updates
+
+Reagent batches state updates automatically, similar to React 18:
+
+#+BEGIN_SRC clojure
+;; Multiple updates are batched into single render
+(defn handle-submit []
+  (reset! name-atom "John")
+  (reset! email-atom "john@example.com")
+  (reset! submitted-atom true))
+;; Only ONE re-render occurs, not three
+#+END_SRC
+
+*** The RAtom Scheduling Problem
+
+Reagent's internal scheduler can conflict with React 18's concurrent features:
+
+#+BEGIN_SRC text
+REAGENT FLOW (pre-React 18):
+  RAtom change -> Reagent queue -> requestAnimationFrame -> React render
+
+REACT 18 CONCURRENT:
+  State change -> React queue -> Priority lanes -> Render
+
+CONFLICT:
+  RAtom change -> Reagent queue -> React queue -> Double batching?
+#+END_SRC
+
+*** Async Rendering Considerations
+
+#+BEGIN_SRC clojure
+;; Reagent's flush mechanism
+(r/flush)  ;; Force synchronous render
+
+;; Next-tick scheduling (for async coordination)
+(r/next-tick (fn [] (println "After render")))
+
+;; After-render hook
+(r/after-render (fn [] (println "DOM updated")))
+#+END_SRC
+
+** Current Status (2025)
+
+*** Compatibility Issues
+
+| React Version | Reagent Support | Notes |
+|---------------+-----------------+-------|
+| React 17      | Full            | Stable, recommended for production |
+| React 18      | Partial         | Works with legacy ReactDOM.render |
+| React 19      | Incompatible    | Class-based internals conflict |
+
+*** Key Limitations
+
+1. *Class Component Internals*: Reagent's core is built on React class components,
+   which are increasingly deprecated in React's architecture.
+
+2. *Concurrent Features*: ~useTransition~, ~useDeferredValue~, and ~<Suspense>~
+   are not directly accessible from Reagent.
+
+3. *Activity API*: React 19.2's ~<Activity>~ component cannot be used with
+   Reagent's component model.
+
+*** Alternatives Emerging
+
+- *UIx2*: Hooks-first React wrapper for ClojureScript
+- *Helix*: Another modern ClojureScript React wrapper
+- *HSX/RFX*: Custom solutions (Hiccup compiler + hooks-based state)
+
+* re-frame
+
+** What is re-frame?
+
+re-frame is a pattern and library for building SPAs in ClojureScript, built on
+top of Reagent. It implements a unidirectional data flow architecture similar to
+Redux but predating it.
+
+** Architecture Overview
+
+#+BEGIN_SRC text
++-------------------+
+|                   |
+|   EVENT           | <-- User actions, API responses, timers
+|   (dispatch)      |
++--------+----------+
+         |
+         v
++--------+----------+
+|                   |
+|   EVENT HANDLER   | <-- Pure functions transforming db
+|   (reg-event-db)  |
++--------+----------+
+         |
+         v
++--------+----------+
+|                   |
+|   APP DB          | <-- Single atom holding all state
+|   (single atom)   |
++--------+----------+
+         |
+         v
++--------+----------+
+|                   |
+|   SUBSCRIPTIONS   | <-- Derived data, memoized
+|   (reg-sub)       |
++--------+----------+
+         |
+         v
++--------+----------+
+|                   |
+|   VIEWS           | <-- Reagent components
+|   (subscribe)     |
++-------------------+
+#+END_SRC
+
+** Core Concepts
+
+*** Events
+
+#+BEGIN_SRC clojure
+(ns my-app.events
+  (:require [re-frame.core :as rf]))
+
+;; Register an event handler
+(rf/reg-event-db
+ :increment-counter
+ (fn [db [_ amount]]
+   (update db :counter + amount)))
+
+;; Dispatch an event
+(rf/dispatch [:increment-counter 5])
+#+END_SRC
+
+*** Subscriptions
+
+#+BEGIN_SRC clojure
+(ns my-app.subs
+  (:require [re-frame.core :as rf]))
+
+;; Simple subscription
+(rf/reg-sub
+ :counter
+ (fn [db _]
+   (:counter db)))
+
+;; Derived subscription (depends on other subs)
+(rf/reg-sub
+ :counter-doubled
+ :<- [:counter]  ;; Input signal
+ (fn [counter _]
+   (* 2 counter)))
+
+;; In component
+(defn counter-view []
+  (let [count @(rf/subscribe [:counter])
+        doubled @(rf/subscribe [:counter-doubled])]
+    [:div
+     [:p "Count: " count]
+     [:p "Doubled: " doubled]]))
+#+END_SRC
+
+*** Effects (Side Effects)
+
+#+BEGIN_SRC clojure
+;; Event with effects (not just db changes)
+(rf/reg-event-fx
+ :fetch-user
+ (fn [{:keys [db]} [_ user-id]]
+   {:db (assoc db :loading? true)
+    :http-xhrio {:method :get
+                 :uri (str "/api/users/" user-id)
+                 :on-success [:user-loaded]
+                 :on-failure [:api-error]}}))
+
+;; Register custom effect handler
+(rf/reg-fx
+ :local-storage
+ (fn [{:keys [key value]}]
+   (.setItem js/localStorage key (pr-str value))))
+#+END_SRC
+
+*** Coeffects (Side Effect Inputs)
+
+#+BEGIN_SRC clojure
+;; Register a coeffect
+(rf/reg-cofx
+ :now
+ (fn [coeffects _]
+   (assoc coeffects :now (js/Date.))))
+
+;; Use in event handler
+(rf/reg-event-fx
+ :log-with-timestamp
+ [(rf/inject-cofx :now)]  ;; Inject the coeffect
+ (fn [{:keys [db now]} [_ message]]
+   {:db (update db :logs conj {:time now :msg message})}))
+#+END_SRC
+
+** Concurrency Patterns in re-frame
+
+*** Event Queue Processing
+
+re-frame processes events sequentially by default:
+
+#+BEGIN_SRC text
+EVENT QUEUE:
+  [:fetch-data] -> [:process-result] -> [:update-ui]
+       |                |                   |
+       v                v                   v
+    Handler 1       Handler 2           Handler 3
+    (async fx)     (pure db)           (pure db)
+#+END_SRC
+
+*** Async Effects and Coordination
+
+#+BEGIN_SRC clojure
+;; Dispatching multiple async operations
+(rf/reg-event-fx
+ :load-dashboard
+ (fn [{:keys [db]} _]
+   {:db (assoc db :loading? true)
+    ;; Multiple parallel fetches
+    :dispatch-n [[:fetch-user]
+                 [:fetch-notifications]
+                 [:fetch-stats]]}))
+
+;; Sequential operations with dispatch-later
+(rf/reg-event-fx
+ :show-then-hide-message
+ (fn [{:keys [db]} [_ message]]
+   {:db (assoc db :message message)
+    :dispatch-later [{:ms 3000
+                      :dispatch [:clear-message]}]}))
+#+END_SRC
+
+*** Debouncing and Throttling
+
+#+BEGIN_SRC clojure
+;; Built-in debounce via dispatch-debounce (with re-frame-utils)
+(rf/dispatch [:search-debounced query])
+
+;; Manual debounce pattern
+(def search-timeout (atom nil))
+
+(rf/reg-event-fx
+ :search-input-changed
+ (fn [{:keys [db]} [_ query]]
+   (when @search-timeout
+     (js/clearTimeout @search-timeout))
+   (reset! search-timeout
+           (js/setTimeout
+            #(rf/dispatch [:execute-search query])
+            300))
+   {:db (assoc db :search-query query)}))
+
+;; With re-frame-async-flow-fx for complex flows
+(rf/reg-event-fx
+ :boot
+ (fn [_ _]
+   {:async-flow {:first-dispatch [:load-config]
+                 :rules [{:when :seen?
+                          :events :config-loaded
+                          :dispatch [:load-user]}
+                         {:when :seen?
+                          :events :user-loaded
+                          :dispatch [:app-ready]}]}}))
+#+END_SRC
+
+*** Subscription Caching and Deduplication
+
+#+BEGIN_SRC clojure
+;; Subscriptions are automatically cached and deduplicated
+;; Multiple components subscribing to [:counter] share ONE computation
+
+;; Layer 2 subscriptions (derived) only recompute when inputs change
+(rf/reg-sub
+ :visible-todos
+ :<- [:todos]
+ :<- [:visibility-filter]
+ (fn [[todos filter] _]
+   (case filter
+     :all todos
+     :active (filter (complement :done) todos)
+     :done (filter :done todos))))
+#+END_SRC
+
+** Comparison: re-frame vs React 19 Patterns
+
+| Concept | re-frame | React 19 |
+|---------+----------+----------|
+| State container | Single atom (app-db) | useState/useReducer per component |
+| Derived state | Subscriptions (memoized) | useMemo, selectors |
+| Side effects | reg-event-fx, reg-fx | useEffect, Server Actions |
+| Async coordination | dispatch-n, async-flow | Suspense, use() |
+| Priority scheduling | Not built-in | useTransition, useDeferredValue |
+| State preservation | Manual (in app-db) | Activity component |
+
+** Current Status (2025)
+
+*** Strengths
+
+1. *Mature and Stable*: Used in production for 10+ years
+2. *Predictable*: Single source of truth, pure event handlers
+3. *Debuggable*: Time-travel debugging with re-frame-10x
+4. *Testable*: Pure functions throughout
+
+*** Limitations
+
+1. *Reagent Dependency*: Inherits Reagent's React compatibility issues
+2. *No Priority Lanes*: All updates processed equally (no urgent vs transition)
+3. *Sequential Events*: Event queue is FIFO, no built-in prioritization
+
+*** The Path Forward
+
+#+BEGIN_SRC text
+OPTION 1: Stay on React 17/18 with current Reagent
+  - Stable, proven
+  - No access to React 19 features
+
+OPTION 2: Migrate to UIx2 + custom re-frame-like layer
+  - Modern React features
+  - Rewrite required
+
+OPTION 3: Wait for Reagent React 19 support
+  - Uncertain timeline
+  - Significant architectural changes needed
+#+END_SRC
+
+* Concurrency Patterns Comparison
+
+** React 19 vs Reagent/re-frame
+
+#+BEGIN_SRC text
+REACT 19 CONCURRENT RENDERING:
++----------------+
+|   User Input   |
++-------+--------+
+        |
+        v
++-------+--------+     +------------------+
+| Urgent Update  |---->| Immediate Render |
++----------------+     +------------------+
+        |
+        v
++-------+--------+     +------------------+
+| startTransition|---->| Deferred Render  |
+| (low priority) |     | (interruptible)  |
++----------------+     +------------------+
+
+
+RE-FRAME EVENT PROCESSING:
++----------------+
+|   User Input   |
++-------+--------+
+        |
+        v
++-------+--------+
+| dispatch event |
++-------+--------+
+        |
+        v
++-------+--------+     +------------------+
+| Event Queue    |---->| Sequential       |
+| (FIFO)         |     | Processing       |
++----------------+     +------------------+
+        |
+        v
++-------+--------+
+| Reagent Render |
+| (batched)      |
++----------------+
+#+END_SRC
+
+** Implementing Priority in re-frame
+
+#+BEGIN_SRC clojure
+;; Custom priority dispatch (conceptual)
+(defn dispatch-with-priority [priority event]
+  (case priority
+    :urgent (rf/dispatch-sync event)  ;; Immediate
+    :normal (rf/dispatch event)       ;; Queued
+    :low (js/requestIdleCallback      ;; When idle
+          #(rf/dispatch event))))
+
+;; Usage
+(dispatch-with-priority :urgent [:update-input value])
+(dispatch-with-priority :low [:search query])
+#+END_SRC
+
+* Resources
+
+** Official Documentation
+
+- [[https://reagent-project.github.io/][Reagent Project]]
+- [[https://day8.github.io/re-frame/][re-frame Documentation]]
+- [[https://github.com/reagent-project/reagent][Reagent GitHub]]
+- [[https://github.com/day8/re-frame][re-frame GitHub]]
+
+** Tutorials and Articles
+
+- [[https://www.metosin.fi/blog/reagent-towards-react-18][Reagent: Towards React 18 (Metosin)]]
+- [[https://factorhouse.io/blog/articles/beyond-reagent-with-hsx-and-rfx/][Beyond Reagent: Migrating to React 19 (Factor House)]]
+- [[https://dev.solita.fi/2024/02/02/the-things-i-like-about-cljs-and-re-frame.html][Things I Like About ClojureScript and Re-Frame]]
+- [[https://www.braveclojure.com/core-async/][Mastering core.async (Brave Clojure)]]
+
+** Alternatives
+
+- [[https://github.com/pitch-io/uix][UIx2 - Hooks-first React wrapper]]
+- [[https://github.com/lilactown/helix][Helix - Another modern ClojureScript React wrapper]]
+- [[https://github.com/day8/re-com][re-com - Reusable Reagent components]]

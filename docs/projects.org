@@ -1,0 +1,691 @@
+#+TITLE: 10 Concurrency Projects for React 19 and Reagent
+#+AUTHOR: React Paris Meetup #011
+#+DATE: 2025
+#+OPTIONS: toc:2 num:t
+
+* Overview
+
+These 10 projects are designed to help you practice concurrency patterns in
+React 19 (TypeScript) or Reagent/re-frame (ClojureScript). Each project
+specifies requirements that naturally benefit from concurrent rendering,
+debouncing, throttling, or async coordination.
+
+Difficulty ratings:
+- [*] Beginner
+- [**] Intermediate
+- [***] Advanced
+
+* Project 1: Typeahead Search [*]
+
+** Description
+Build an autocomplete/typeahead component that searches a list of items as the
+user types.
+
+** Requirements
+
+*** Functional
+- Display an input field
+- As user types, show filtered suggestions below
+- Highlight matching text in suggestions
+- Allow selection via click or keyboard (up/down arrows, Enter)
+- Show "No results" when nothing matches
+- Support minimum character threshold (e.g., start searching after 2 chars)
+
+*** Concurrency Focus
+- Input should remain responsive during filtering
+- Large datasets (10,000+ items) should not block typing
+- Show loading/stale indicator during search
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Use useDeferredValue for the search query
+const deferredQuery = useDeferredValue(query);
+const isStale = query !== deferredQuery;
+
+// Or useTransition for explicit control
+const [isPending, startTransition] = useTransition();
+startTransition(() => setFilteredItems(filter(items, query)));
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; Use debounced dispatch
+(rf/dispatch-debounce [:search-items query] 150)
+
+;; Or manual debounce with timeout
+(defonce search-timeout (atom nil))
+(defn debounced-search [query]
+  (when @search-timeout (js/clearTimeout @search-timeout))
+  (reset! search-timeout
+          (js/setTimeout #(rf/dispatch [:filter-items query]) 150)))
+#+END_SRC
+
+** Bonus Challenges
+- Add recent searches
+- Implement fuzzy matching
+- Add category grouping
+- Support async API search
+
+* Project 2: Modal Dialog System [*]
+
+** Description
+Create a modal dialog system with smooth transitions and proper focus management.
+
+** Requirements
+
+*** Functional
+- Open/close modal programmatically
+- Support multiple modal types (alert, confirm, form)
+- Trap focus inside modal when open
+- Close on Escape key or backdrop click
+- Prevent body scroll when modal is open
+- Support stacked modals (modal opens another modal)
+
+*** Concurrency Focus
+- Pre-render modal content for instant opening
+- Animate without blocking main thread
+- Form submissions should not block modal interaction
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Use Activity to pre-render modal content
+<Activity mode={isOpen ? "visible" : "hidden"}>
+  <ModalContent />
+</Activity>
+
+// Use useTransition for non-blocking form submission
+const [isPending, startTransition] = useTransition();
+const handleSubmit = () => {
+  startTransition(async () => {
+    await submitForm(data);
+    closeModal();
+  });
+};
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; Use re-frame for modal state
+(rf/reg-event-db :open-modal
+  (fn [db [_ modal-id content]]
+    (update db :modals conj {:id modal-id :content content})))
+
+;; Effect for body scroll lock
+(rf/reg-fx :lock-scroll
+  (fn [lock?]
+    (set! (.. js/document -body -style -overflow)
+          (if lock? "hidden" ""))))
+#+END_SRC
+
+** Bonus Challenges
+- Add drawer variant (slide from side)
+- Implement portal rendering
+- Add enter/exit animations with Framer Motion or CSS transitions
+- Support async content loading in modal
+
+* Project 3: Infinite Scroll List [**]
+
+** Description
+Build a virtualized list that loads more items as the user scrolls.
+
+** Requirements
+
+*** Functional
+- Display list of items (start with 50)
+- Load more when user scrolls near bottom
+- Show loading indicator while fetching
+- Support variable height items
+- Maintain scroll position on data updates
+- Handle errors gracefully with retry option
+
+*** Concurrency Focus
+- Scroll should remain smooth (60fps)
+- New items should load without janking scroll
+- Render only visible items (virtualization)
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Throttle scroll handler
+const handleScroll = useCallback(
+  throttle((e) => {
+    if (nearBottom(e)) {
+      startTransition(() => loadMore());
+    }
+  }, 100),
+  []
+);
+
+// Defer rendering of new items
+const deferredItems = useDeferredValue(items);
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; Throttled scroll subscription
+(def scroll-ch (chan (sliding-buffer 1)))
+
+(defn on-scroll [e]
+  (put! scroll-ch (.-scrollTop (.-target e))))
+
+(go-loop []
+  (let [pos (<! scroll-ch)]
+    (when (near-bottom? pos)
+      (rf/dispatch [:load-more-items]))
+    (<! (timeout 100))
+    (recur)))
+#+END_SRC
+
+** Bonus Challenges
+- Add pull-to-refresh
+- Implement bidirectional infinite scroll
+- Add item selection with shift-click range select
+- Cache previously loaded pages
+
+* Project 4: Form with Real-time Validation [**]
+
+** Description
+Build a form with field-level validation that runs as the user types.
+
+** Requirements
+
+*** Functional
+- Multiple field types (text, email, password, select)
+- Validation rules per field (required, min/max length, pattern, custom)
+- Show validation errors inline
+- Disable submit until form is valid
+- Support async validation (e.g., check username availability)
+- Show validation status (pending, valid, invalid)
+
+*** Concurrency Focus
+- Typing should not be blocked by validation
+- Async validations should be debounced
+- Multiple rapid changes should cancel pending validations
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Debounced async validation
+const [validationPending, startValidation] = useTransition();
+
+const validateUsername = useMemo(
+  () =>
+    debounce(async (username: string) => {
+      startValidation(async () => {
+        const available = await checkAvailability(username);
+        setFieldError('username', available ? null : 'Username taken');
+      });
+    }, 500),
+  []
+);
+
+// useActionState for form submission
+const [state, formAction, isPending] = useActionState(submitForm, null);
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; Async validation effect
+(rf/reg-event-fx :validate-username
+  (fn [{:keys [db]} [_ username]]
+    {:db (assoc-in db [:validation :username :pending] true)
+     :http-xhrio {:method :get
+                  :uri "/api/check-username"
+                  :params {:username username}
+                  :on-success [:username-validated]
+                  :on-failure [:validation-error :username]}}))
+
+;; Debounce validation dispatch
+(rf/dispatch-debounce [:validate-username value] 500)
+#+END_SRC
+
+** Bonus Challenges
+- Add password strength meter
+- Implement dependent field validation
+- Add form-level validation (e.g., passwords match)
+- Support field arrays (add/remove items)
+
+* Project 5: Image Carousel/Gallery [**]
+
+** Description
+Build an image carousel with lazy loading and smooth transitions.
+
+** Requirements
+
+*** Functional
+- Display images in a carousel format
+- Navigate with arrows and dots
+- Support swipe gestures on touch devices
+- Auto-advance option with pause on hover
+- Thumbnail navigation strip
+- Fullscreen mode
+
+*** Concurrency Focus
+- Preload adjacent images
+- Transitions should not block interaction
+- Large images should load progressively
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Pre-render adjacent slides
+<Activity mode={index === currentIndex ? "visible" : "hidden"}>
+  <Suspense fallback={<ImagePlaceholder />}>
+    <LazyImage src={images[index]} />
+  </Suspense>
+</Activity>
+
+// Use transition for slide changes
+const [isPending, startTransition] = useTransition();
+const goToSlide = (index: number) => {
+  startTransition(() => setCurrentIndex(index));
+};
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; Preload images with core.async
+(defn preload-images [urls]
+  (go
+    (doseq [url urls]
+      (let [img (js/Image.)]
+        (set! (.-src img) url)
+        (<! (timeout 100))))))
+
+;; Subscription for visible slides
+(rf/reg-sub :visible-slides
+  :<- [:current-index]
+  :<- [:all-images]
+  (fn [[idx images] _]
+    (->> images
+         (map-indexed vector)
+         (filter (fn [[i _]] (<= (- idx 1) i (+ idx 1)))))))
+#+END_SRC
+
+** Bonus Challenges
+- Add zoom functionality
+- Implement lazy loading with blur-up placeholders
+- Add keyboard navigation
+- Support video slides
+
+* Project 6: Real-time Notifications [**]
+
+** Description
+Build a notification system that displays toast messages and a notification center.
+
+** Requirements
+
+*** Functional
+- Show toast notifications (success, error, warning, info)
+- Auto-dismiss after configurable duration
+- Manual dismiss with close button
+- Stack multiple notifications
+- Notification center panel showing history
+- Mark as read/unread
+- Support actions in notifications
+
+*** Concurrency Focus
+- Notifications should not block UI
+- Animations should be smooth
+- Handle rapid notification bursts
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Queue notifications with priority
+const addNotification = (notification: Notification) => {
+  if (notification.priority === 'high') {
+    // Show immediately
+    setNotifications((prev) => [notification, ...prev]);
+  } else {
+    // Defer low priority
+    startTransition(() => {
+      setNotifications((prev) => [...prev, notification]);
+    });
+  }
+};
+
+// Use optimistic updates for marking as read
+const [optimisticRead, markAsRead] = useOptimistic(notifications,
+  (state, id) => state.map(n => n.id === id ? {...n, read: true} : n)
+);
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; Effect for auto-dismiss
+(rf/reg-event-fx :show-notification
+  (fn [{:keys [db]} [_ notification]]
+    {:db (update db :notifications conj notification)
+     :dispatch-later [{:ms (:duration notification 5000)
+                       :dispatch [:dismiss-notification (:id notification)]}]}))
+
+;; Subscription for unread count
+(rf/reg-sub :unread-count
+  :<- [:notifications]
+  (fn [notifications _]
+    (count (filter (complement :read) notifications))))
+#+END_SRC
+
+** Bonus Challenges
+- Add notification sound
+- Implement notification grouping
+- Add WebSocket support for real-time updates
+- Support notification preferences (per type)
+
+* Project 7: Data Table with Sorting/Filtering [***]
+
+** Description
+Build a data table that handles large datasets with sorting, filtering, and pagination.
+
+** Requirements
+
+*** Functional
+- Display tabular data with columns
+- Sort by clicking column headers (asc/desc)
+- Filter with search input and column filters
+- Pagination with configurable page size
+- Column resizing and reordering
+- Row selection (single and multi)
+- Export selected rows
+
+*** Concurrency Focus
+- Sorting/filtering should not block scrolling
+- Handle 100,000+ rows efficiently
+- Search should be debounced
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Defer expensive operations
+const deferredFilter = useDeferredValue(filterValue);
+const deferredSort = useDeferredValue(sortConfig);
+
+const processedData = useMemo(() => {
+  let result = data;
+  if (deferredFilter) result = filter(result, deferredFilter);
+  if (deferredSort) result = sort(result, deferredSort);
+  return result;
+}, [data, deferredFilter, deferredSort]);
+
+// Show stale indicator
+const isStale = filterValue !== deferredFilter || sortConfig !== deferredSort;
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; Layer 3 subscription for processed data
+(rf/reg-sub :processed-table-data
+  :<- [:raw-data]
+  :<- [:sort-config]
+  :<- [:filter-value]
+  :<- [:pagination]
+  (fn [[data sort-cfg filter-val {:keys [page size]}] _]
+    (->> data
+         (filter-data filter-val)
+         (sort-data sort-cfg)
+         (drop (* page size))
+         (take size))))
+
+;; Virtual rendering for large datasets
+(defn virtual-row [idx]
+  (let [row @(rf/subscribe [:row-at-index idx])]
+    [:tr {:key idx} ...]))
+#+END_SRC
+
+** Bonus Challenges
+- Add inline editing
+- Implement column grouping
+- Add row grouping/tree structure
+- Support server-side sorting/filtering
+
+* Project 8: Multi-step Wizard [**]
+
+** Description
+Build a multi-step form wizard with progress tracking and validation.
+
+** Requirements
+
+*** Functional
+- Multiple steps with progress indicator
+- Navigate forward/backward between steps
+- Validate each step before proceeding
+- Save progress (local storage or API)
+- Review step before final submission
+- Support conditional steps (show/hide based on previous answers)
+
+*** Concurrency Focus
+- Step transitions should be smooth
+- Pre-render next step for instant navigation
+- Form submission should not block navigation
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Pre-render adjacent steps
+{steps.map((step, index) => (
+  <Activity
+    key={step.id}
+    mode={index === currentStep ? "visible" : "hidden"}
+  >
+    <StepContent step={step} />
+  </Activity>
+))}
+
+// Use form actions
+<form action={async (formData) => {
+  startTransition(async () => {
+    await saveStep(currentStep, formData);
+    setCurrentStep(s => s + 1);
+  });
+}}>
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; Step state management
+(rf/reg-event-fx :next-step
+  (fn [{:keys [db]} _]
+    (let [current (:current-step db)
+          valid? (validate-step db current)]
+      (if valid?
+        {:db (update db :current-step inc)
+         :fx [[:save-progress (get-in db [:steps current])]]}
+        {:db (assoc-in db [:steps current :errors] (get-errors db current))}))))
+
+;; Conditional steps subscription
+(rf/reg-sub :visible-steps
+  :<- [:all-steps]
+  :<- [:step-data]
+  (fn [[steps data] _]
+    (filter #(step-visible? % data) steps)))
+#+END_SRC
+
+** Bonus Challenges
+- Add step branching (different paths based on answers)
+- Implement step caching
+- Add undo/redo functionality
+- Support resuming abandoned wizards
+
+* Project 9: Collaborative Text Editor [***]
+
+** Description
+Build a simple collaborative text editor with real-time updates.
+
+** Requirements
+
+*** Functional
+- Text editing area with basic formatting (bold, italic, lists)
+- Show other users' cursors
+- Display who is currently editing
+- Conflict resolution for simultaneous edits
+- Version history with rollback
+- Auto-save with status indicator
+
+*** Concurrency Focus
+- Local edits should be instant
+- Remote updates should merge smoothly
+- High-frequency updates should be batched
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Optimistic local updates
+const [optimisticContent, addEdit] = useOptimistic(
+  content,
+  (state, edit) => applyEdit(state, edit)
+);
+
+// Batch remote updates
+const [isPending, startTransition] = useTransition();
+useEffect(() => {
+  socket.on('remote-edit', (edit) => {
+    startTransition(() => {
+      setContent((prev) => mergeEdit(prev, edit));
+    });
+  });
+}, []);
+
+// Debounce auto-save
+const debouncedSave = useMemo(
+  () => debounce((content) => saveToServer(content), 1000),
+  []
+);
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; WebSocket effect
+(rf/reg-fx :websocket-send
+  (fn [message]
+    (.send @ws-connection (clj->js message))))
+
+;; Operational transform for merging
+(rf/reg-event-db :apply-remote-edit
+  (fn [db [_ edit]]
+    (let [local-pending (get-in db [:editor :pending-ops])
+          transformed (transform-edit edit local-pending)]
+      (update-in db [:editor :content] apply-edit transformed))))
+
+;; Throttled broadcast of local changes
+(def edit-ch (chan (sliding-buffer 10)))
+
+(go-loop []
+  (<! (timeout 50))
+  (let [edits (drain! edit-ch)]
+    (when (seq edits)
+      (rf/dispatch [:broadcast-edits (merge-edits edits)])))
+  (recur))
+#+END_SRC
+
+** Bonus Challenges
+- Implement CRDT-based conflict resolution
+- Add commenting/annotation support
+- Support rich text (headings, code blocks)
+- Add presence indicators (typing...)
+
+* Project 10: Dashboard with Live Data [***]
+
+** Description
+Build a dashboard with multiple widgets showing live-updating data.
+
+** Requirements
+
+*** Functional
+- Multiple widget types (charts, stats, tables, feeds)
+- Configurable layout (drag-and-drop positioning)
+- Individual refresh rates per widget
+- Error boundaries per widget (one failure doesn't break others)
+- Responsive layout
+- Save layout preferences
+
+*** Concurrency Focus
+- Widget updates should not block other widgets
+- Heavy widgets should load progressively
+- Refresh operations should be staggered
+
+*** React 19 Implementation Hints
+#+BEGIN_SRC typescript
+// Each widget in its own Suspense boundary
+<ErrorBoundary fallback={<WidgetError />}>
+  <Suspense fallback={<WidgetSkeleton />}>
+    <Widget config={config} />
+  </Suspense>
+</ErrorBoundary>
+
+// Stagger widget loads to prevent thundering herd
+const loadWidget = (id: string, delay: number) => {
+  setTimeout(() => {
+    startTransition(() => {
+      setLoadedWidgets((prev) => [...prev, id]);
+    });
+  }, delay);
+};
+
+// Low-priority background refresh
+const refresh = () => {
+  startTransition(() => {
+    invalidateQueries(['dashboard']);
+  });
+};
+#+END_SRC
+
+*** Reagent Implementation Hints
+#+BEGIN_SRC clojure
+;; Independent subscriptions per widget
+(rf/reg-sub :widget-data
+  (fn [[_ widget-id]]
+    (rf/subscribe [:raw-widget-data widget-id]))
+  (fn [data [_ widget-id]]
+    (transform-widget-data widget-id data)))
+
+;; Staggered refresh with core.async
+(defn start-widget-refreshes [widgets]
+  (go
+    (doseq [{:keys [id interval]} widgets]
+      (<! (timeout 100))  ; Stagger starts
+      (go-loop []
+        (rf/dispatch [:refresh-widget id])
+        (<! (timeout interval))
+        (recur)))))
+
+;; Error isolation with try-catch in subscriptions
+(rf/reg-sub :safe-widget-data
+  (fn [[_ widget-id]]
+    (rf/subscribe [:widget-data widget-id]))
+  (fn [data _]
+    (try
+      (process-data data)
+      (catch :default e
+        {:error (.-message e)}))))
+#+END_SRC
+
+** Bonus Challenges
+- Add widget creation wizard
+- Implement widget communication (click one affects another)
+- Add export to PDF/PNG
+- Support real-time WebSocket data streams
+
+* Implementation Notes
+
+** Getting Started
+
+For React 19:
+#+BEGIN_SRC bash
+npx create-react-app my-project --template typescript
+npm install react@19 react-dom@19
+#+END_SRC
+
+For Reagent/re-frame:
+#+BEGIN_SRC bash
+clj -Ttools install-latest :lib io.github.seancorfield/deps-new :as new
+clj -Tnew template :name reagent :target-dir my-project
+#+END_SRC
+
+** Testing Concurrency
+
+1. Use React DevTools Profiler to verify concurrent rendering
+2. Add artificial delays to simulate slow operations
+3. Test with CPU throttling in Chrome DevTools
+4. Use ~React.startTransition~ boundaries to verify priority
+
+** Evaluation Criteria
+
+- [ ] UI remains responsive during heavy operations
+- [ ] Loading states are shown appropriately
+- [ ] No unnecessary re-renders
+- [ ] Error states are handled gracefully
+- [ ] Works on slow devices (test with CPU throttling)
