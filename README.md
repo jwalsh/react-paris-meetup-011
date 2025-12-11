@@ -1,11 +1,29 @@
-# React Paris Meetup #011: Concurrency in React 19
+# React Paris Meetup #011
 
-Presentation and code examples for React Paris Meetup #011 covering concurrency patterns in React 19, with comparisons to ClojureScript (Reagent, re-frame, core.async).
+**Date**: December 10, 2025
+**Location**: L'Atelier, 56 Rue de l'Arbre Sec, 75001 Paris
+
+## Talks
+
+### Talk 1: Conquering React Concurrency
+**Ariel Shulman**
+
+Deep dive into React's concurrent rendering model and practical patterns.
+
+### Talk 2: Évolution des librairies UI et futures problématiques
+**Théo Senoussaoui**
+
+The evolution of headless UI libraries (Radix, Headless UI, Ark UI), technical choices behind them, how to select the right one, and the new problems they pose.
+
+---
+
+Companion materials covering concurrency patterns in React 19, with comparisons to ClojureScript (Reagent, re-frame, core.async).
 
 ## Quick Links
 
 - [Presentation (PDF)](./presentation.pdf)
 - [Presentation (Org)](./presentation.org)
+- [Talk 2: UI Libraries Evolution](./docs/talk2-ui-libraries-evolution.org)
 - [Practice Projects](./docs/projects.org)
 - [Reagent/re-frame Deep Dive](./docs/reagent-reframe-deep-dive.org)
 

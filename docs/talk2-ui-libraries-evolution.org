@@ -1,0 +1,346 @@
+#+TITLE: Talk 2: Evolution des librairies UI et futures problematiques
+#+AUTHOR: Theo Senoussaoui - React Paris Meetup #011
+#+DATE: December 10, 2025
+#+OPTIONS: toc:2 num:t
+
+* Talk Overview
+
+*Speaker*: Theo Senoussaoui
+*Event*: React Paris Meetup #011
+*Date*: December 10, 2025
+*Location*: L'Atelier, 56 Rue de l'Arbre Sec, 75001 Paris
+
+** Abstract
+
+The evolution of "headless" UI libraries that offer components without styling.
+Today there has been an explosion of solutions like Radix, Headless UI, Ark UI,
+etc. This presentation discusses:
+
+- The evolution of UI libraries
+- Technical choices behind these libraries
+- How to select the right one based on your needs
+- New problems they pose
+
+* The Evolution of React UI Libraries
+
+** Generation 1: Styled Component Libraries (2015-2018)
+
+*** Examples
+- Bootstrap (React Bootstrap)
+- Material-UI (MUI)
+- Ant Design
+- Semantic UI React
+
+*** Characteristics
+- Complete design systems as importable components
+- Opinionated styling built-in
+- Quick to get started
+- Consistent look and feel
+
+*** Problems Introduced
+- Bundle size bloat (importing entire design system)
+- Difficult to customize beyond theme variables
+- "Every app looks the same" syndrome
+- Fighting against the library's opinions
+- Tight coupling between logic and styles
+
+** Generation 2: Utility-First CSS (2017-2020)
+
+*** Examples
+- Tailwind CSS
+- Tachyons
+- Styled System
+
+*** Characteristics
+- Atomic CSS classes
+- No pre-built components
+- Full styling control
+- Smaller bundles (purging unused classes)
+
+*** Problems
+- Verbose class names
+- Learning curve for utility classes
+- No component logic provided
+- Accessibility not addressed
+
+** Generation 3: Headless/Unstyled Libraries (2020-2023)
+
+*** Examples
+- Radix UI
+- Headless UI (Tailwind Labs)
+- React Aria (Adobe)
+- Reach UI
+- Downshift
+
+*** Characteristics
+- Logic and accessibility without styling
+- Fully composable primitives
+- ARIA patterns built-in
+- Keyboard navigation included
+- Focus management handled
+
+*** The Headless Philosophy
+
+#+BEGIN_SRC text
+TRADITIONAL LIBRARY:
++----------------------------------+
+|  Component = Logic + Style       |
+|  (tightly coupled)               |
++----------------------------------+
+
+HEADLESS LIBRARY:
++------------------+  +------------------+
+|  Logic Layer     |  |  Style Layer     |
+|  (accessibility, |  |  (your CSS,      |
+|   state, events) |  |   Tailwind, etc) |
++------------------+  +------------------+
+         |                    |
+         +--------+-----------+
+                  |
+                  v
+         +------------------+
+         |  Your Component  |
+         +------------------+
+#+END_SRC
+
+** Generation 4: Copy-Paste Architecture (2023-Present)
+
+*** Examples
+- shadcn/ui
+- Catalyst (Tailwind)
+- Tremor
+
+*** Characteristics
+- Not a package - copy source code into your project
+- Full ownership of components
+- Built on headless primitives (Radix)
+- Tailwind for styling
+- CLI for adding components
+
+*** The shadcn/ui Model
+
+#+BEGIN_SRC bash
+# Instead of: npm install @some-ui/button
+# You run:
+npx shadcn-ui@latest add button
+
+# This copies the component SOURCE into your project:
+# components/ui/button.tsx
+#+END_SRC
+
+*** Advantages
+- No dependency lock-in
+- Full customization control
+- Understand what you're shipping
+- Easy to modify internals
+
+*** New Problems
+- Consistency across large teams
+- No automatic updates
+- Duplicated code across projects
+- Requires understanding internals
+
+* Current Landscape (2025)
+
+** Popularity Metrics
+
+| Library | GitHub Stars | Weekly Downloads | Notes |
+|---------+--------------+------------------+-------|
+| MUI | 95k+ | 3.3M | Still most adopted |
+| Ant Design | 93k+ | 1.3M | Popular in Asia |
+| shadcn/ui | 83k+ | 200k+ | Fastest growing |
+| Chakra UI | 38k+ | 587k+ | Good DX |
+| Radix UI | 17k+ | 130k+ | Foundation for shadcn |
+| Mantine | 27k+ | 300k+ | Full-featured |
+
+** The Radix Situation
+
+*** Critical Development (Late 2024)
+
+The Radix team has shifted focus to *Base UI*, a new project in collaboration
+with MUI. This raises questions about Radix's long-term maintenance.
+
+*** Impact on Ecosystem
+
+#+BEGIN_SRC text
+DEPENDENCY CHAIN:
+shadcn/ui --> Radix UI --> ??? (uncertain future)
+#+END_SRC
+
+Projects built on Radix (including shadcn/ui) may face:
+- Future compatibility issues
+- Need for migration to alternatives
+- Uncertain bug fix timeline
+
+*** Alternatives
+
+- *React Aria* (Adobe): Enterprise backing, active development, most robust
+- *Headless UI* (Tailwind Labs): Maintained by Tailwind team
+- *Ark UI*: From Chakra UI creators, newer option
+- *Base UI*: The new Radix successor (MUI collaboration)
+
+* Future Problematiques (Challenges)
+
+** 1. Maintenance and Sustainability
+
+*** The Problem
+Open source UI libraries require significant ongoing effort:
+- Browser compatibility updates
+- React version compatibility
+- Accessibility standard changes
+- Security patches
+
+*** Questions to Consider
+- Who maintains this library?
+- What's their funding model?
+- What happens if maintainers leave?
+- Is there corporate backing?
+
+** 2. React Server Components Compatibility
+
+*** The Challenge
+RSC changes how components can be written:
+- "use client" directive requirements
+- Serialization constraints
+- Hydration considerations
+
+*** Library Responses
+| Library | RSC Support | Notes |
+|---------+-------------+-------|
+| MUI | Partial | Working on it |
+| shadcn/ui | Good | Client components explicit |
+| Radix | Partial | Some primitives work |
+| React Aria | Good | Designed for flexibility |
+
+** 3. The "Everything Looks Like shadcn" Problem
+
+*** The Aesthetic Convergence
+So many projects use shadcn/ui's default styling that web applications
+are starting to look identical.
+
+*** Solutions
+- Heavy customization investment
+- Custom design tokens
+- Alternative base components
+- Unique animation/interaction patterns
+
+** 4. Design-Development Sync
+
+*** The Gap
+- Figma designs vs actual components
+- Design tokens synchronization
+- Component API mismatches
+
+*** Emerging Solutions
+- Figma plugins for code generation
+- Design token standards (Style Dictionary)
+- Component documentation (Storybook)
+
+** 5. Bundle Size and Performance
+
+*** The Trade-offs
+
+#+BEGIN_SRC text
+MORE FEATURES          <---->  SMALLER BUNDLE
+Full component library          Headless primitives
+Rich animations                 CSS-only transitions
+All-in-one solution             Multiple small packages
+#+END_SRC
+
+*** Optimization Strategies
+- Tree shaking
+- Code splitting
+- Dynamic imports
+- Server components for static parts
+
+** 6. Accessibility Debt
+
+*** The Hidden Cost
+Many teams:
+- Skip accessibility initially
+- Plan to "add it later"
+- Underestimate complexity
+
+*** Why Headless Libraries Help
+- ARIA patterns built-in
+- Keyboard navigation handled
+- Focus management included
+- Screen reader tested
+
+** 7. Choosing the Right Library
+
+*** Decision Framework
+
+#+BEGIN_SRC text
+START
+  |
+  v
+Do you need full design system? --YES--> MUI, Ant Design, Chakra
+  |
+  NO
+  |
+  v
+Do you want full control? --YES--> Headless (Radix, React Aria)
+  |                                       |
+  NO                                      v
+  |                              Using Tailwind? --YES--> shadcn/ui
+  v                                       |
+Need quick prototyping? --YES--> Chakra, Mantine
+  |                                       NO
+  NO                                      |
+  |                                       v
+  v                              React Aria + custom CSS
+Custom design system? --YES--> Headless + Design Tokens
+#+END_SRC
+
+* Recommendations for 2025
+
+** For New Projects
+
+1. *Evaluate RSC compatibility* - Will you use Server Components?
+2. *Consider maintenance* - Who backs this library?
+3. *Check accessibility* - Is it built-in or bolted-on?
+4. *Assess customization needs* - How unique is your design?
+
+** For Existing Projects
+
+1. *Audit current dependencies* - Are they actively maintained?
+2. *Plan migration path* - Especially if using Radix
+3. *Document deviations* - Track custom modifications
+4. *Monitor ecosystem* - Stay informed about library futures
+
+** Technology Choices by Use Case
+
+| Use Case | Recommended Approach |
+|----------+----------------------|
+| Startup MVP | shadcn/ui or Chakra UI |
+| Enterprise app | React Aria + design system |
+| Design-heavy product | Headless + custom CSS |
+| Internal tools | MUI or Ant Design |
+| High-performance | Headless + minimal CSS |
+
+* Resources
+
+** Libraries Mentioned
+
+- [[https://ui.shadcn.com/][shadcn/ui]]
+- [[https://www.radix-ui.com/][Radix UI]]
+- [[https://react-spectrum.adobe.com/react-aria/][React Aria (Adobe)]]
+- [[https://headlessui.com/][Headless UI]]
+- [[https://mui.com/][MUI (Material UI)]]
+- [[https://chakra-ui.com/][Chakra UI]]
+- [[https://mantine.dev/][Mantine]]
+- [[https://ark-ui.com/][Ark UI]]
+
+** Further Reading
+
+- [[https://www.builder.io/blog/react-component-library][React UI Component Libraries in 2025 (Builder.io)]]
+- [[https://makersden.io/blog/react-ui-libs-2025-comparing-shadcn-radix-mantine-mui-chakra][Comparing React UI Libraries 2025 (Makers Den)]]
+- [[https://vercel.com/academy/shadcn-ui/evolution-of-component-libraries][Evolution of Component Libraries (Vercel)]]
+
+** Speaker
+
+*Theo Senoussaoui*
+- GitHub: [[https://github.com/theosenoussaoui][theosenoussaoui]]
+- Frontend Developer, Paris
+- Previous talk: "Building a Modern eCommerce Stack in 2025" (Remix Paris)
