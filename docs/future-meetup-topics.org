@@ -1,0 +1,251 @@
+#+TITLE: Future React Paris Meetup Topics
+#+AUTHOR: React Paris Meetup
+#+DATE: 2025
+#+OPTIONS: toc:2 num:t
+
+* Overview
+
+Potential topics for React Paris Meetups #012 and #013, building on themes
+from meetup #011 (Concurrency and UI Libraries Evolution).
+
+* Meetup #012 - Potential Topics
+
+** Option A: React Server Components Deep Dive
+
+*** Talk 1: RSC Architecture and Mental Models
+- How RSC differs from SSR/SSG
+- Server vs Client component boundaries
+- Data fetching patterns with RSC
+- Streaming and progressive rendering
+- When to use "use client" vs keeping server-only
+
+*** Talk 2: Building a Full-Stack App with RSC
+- Next.js App Router patterns
+- Server Actions for mutations
+- Caching strategies
+- Error handling and loading states
+- Performance optimization
+
+*** Why This Topic?
+- Follows naturally from React 19 concurrency discussion
+- RSC is the biggest architectural shift since hooks
+- Many developers still confused about when/how to use RSC
+
+** Option B: State Management in 2025
+
+*** Talk 1: The Death of Redux? State Management Evolution
+- Redux Toolkit vs alternatives
+- Zustand, Jotai, Valtio comparison
+- React Query/TanStack Query for server state
+- When you still need Redux
+- Signals (Preact, SolidJS influence on React)
+
+*** Talk 2: Building Without Global State
+- URL as state (nuqs, next-usequerystate)
+- Server state vs client state
+- Form state with React 19 Actions
+- Local-first architectures
+- Optimistic updates patterns
+
+*** Why This Topic?
+- re-frame discussion opened questions about state management
+- Many teams still over-using global state
+- React 19 Actions change the game for form state
+
+** Option C: Testing Modern React Applications
+
+*** Talk 1: Testing Strategies for Concurrent React
+- Testing useTransition and Suspense
+- React Testing Library best practices
+- Mocking server components
+- Snapshot testing: still useful?
+- Component vs integration vs E2E balance
+
+*** Talk 2: Visual Regression and Accessibility Testing
+- Storybook and Chromatic
+- Playwright component testing
+- Automated accessibility testing
+- Testing headless UI components
+- CI/CD integration patterns
+
+*** Why This Topic?
+- Testing concurrent features is tricky
+- Headless UI libraries need different testing approaches
+- Many teams struggle with testing strategy
+
+* Meetup #013 - Potential Topics
+
+** Option A: Performance Optimization Masterclass
+
+*** Talk 1: Profiling and Optimizing React Apps
+- React DevTools Profiler deep dive
+- Identifying unnecessary re-renders
+- useMemo/useCallback: when actually useful
+- Code splitting strategies
+- Bundle analysis and optimization
+
+*** Talk 2: Core Web Vitals and React
+- LCP, FID, CLS optimization
+- Image optimization strategies
+- Font loading best practices
+- Third-party script management
+- Measuring real user performance
+
+*** Why This Topic?
+- Concurrent rendering is about perceived performance
+- Many teams don't know how to profile effectively
+- Core Web Vitals affect SEO
+
+** Option B: Design Systems and Component Libraries
+
+*** Talk 1: Building a Design System from Scratch
+- Token-based design (Style Dictionary)
+- Component API design principles
+- Compound components pattern
+- Accessibility by default
+- Documentation with Storybook
+
+*** Talk 2: Migrating to/from UI Libraries
+- When to build vs buy
+- Migration strategies (MUI to Radix, etc.)
+- Handling breaking changes
+- Design token standardization
+- Component versioning
+
+*** Why This Topic?
+- Directly follows Talk 2 from meetup #011
+- Radix maintenance concerns make this urgent
+- Many teams evaluating options
+
+** Option C: AI and React Development
+
+*** Talk 1: AI-Assisted React Development
+- GitHub Copilot patterns
+- v0.dev and AI component generation
+- AI for accessibility testing
+- Prompt engineering for React code
+- Limitations and best practices
+
+*** Talk 2: Building AI Features in React Apps
+- Streaming responses with Suspense
+- Vercel AI SDK
+- Chat interfaces patterns
+- Rate limiting and error handling
+- Cost optimization strategies
+
+*** Why This Topic?
+- AI is transforming development workflow
+- Many React apps now include AI features
+- Need to discuss responsible AI integration
+
+* ClojureScript-Focused Topics (Special Edition)
+
+** Reagent/re-frame in 2025: What Now?
+
+*** Talk 1: The State of ClojureScript React Wrappers
+- Reagent's React 19 incompatibility
+- UIx2 as the modern alternative
+- Helix patterns
+- Migration strategies
+
+*** Talk 2: re-frame Patterns for Complex SPAs
+- Event-driven architecture
+- Effect isolation
+- Subscription optimization
+- Debugging with re-frame-10x
+
+** core.async for UI Development
+
+*** Talk 1: CSP Patterns for React Developers
+- Channels and go blocks explained
+- Debounce/throttle with core.async
+- Coordinating async operations
+- Comparison with React hooks
+
+*** Talk 2: Building Reactive UIs with core.async
+- Event stream processing
+- State machines with channels
+- Testing async code
+- Performance considerations
+
+* Workshop Ideas
+
+** Half-Day Workshops
+
+1. *Building a Headless Component Library*
+   - 3 hours hands-on
+   - Build select, dialog, tooltip from scratch
+   - Focus on accessibility
+   - Publish to npm
+
+2. *React 19 Features Workshop*
+   - 3 hours hands-on
+   - Actions, use() hook, optimistic updates
+   - Build a complete form flow
+   - Server Actions with Next.js
+
+3. *Performance Debugging Workshop*
+   - 3 hours hands-on
+   - Profiler deep dive
+   - Fix real performance issues
+   - Bundle optimization
+
+** Full-Day Workshops
+
+1. *Design System from Scratch*
+   - 8 hours
+   - Tokens, components, documentation
+   - Build 10+ components
+   - Deploy Storybook
+
+2. *Full-Stack React with RSC*
+   - 8 hours
+   - Next.js App Router
+   - Database integration
+   - Authentication
+   - Deployment
+
+* Lightning Talk Ideas (10-15 min)
+
+1. *"One Weird Trick" series*
+   - useSyncExternalStore demystified
+   - CSS-in-JS performance gotchas
+   - React.memo myths busted
+
+2. *Tool Spotlights*
+   - Million.js for performance
+   - React Email
+   - React PDF
+
+3. *Framework Comparisons*
+   - React vs SolidJS performance
+   - Signals: coming to React?
+   - Svelte 5 runes vs React hooks
+
+* Community Suggestions Process
+
+** How to Propose a Topic
+1. Open issue on github.com/ReactParis/meetups
+2. Include: Title, abstract (100 words), speaker bio
+3. Community votes via reactions
+4. Organizers select based on votes + diversity
+
+** Speaker Support
+- Slide review available
+- Practice sessions offered
+- Recording equipment provided
+- Travel support for out-of-town speakers (case by case)
+
+* Resources
+
+** Past Meetup Recordings
+- [[https://github.com/ReactParis/talks][React Paris Talks Repository]]
+
+** Community
+- [[https://www.meetup.com/react-paris/][Meetup.com Page]]
+- [[https://twitter.com/ReactjsParis][@ReactjsParis on Twitter]]
+
+** Related Meetups
+- Remix Paris
+- Vue.js Paris
+- Node.js Paris
