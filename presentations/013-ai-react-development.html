@@ -1,0 +1,971 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2025-12-13 Sat 20:27 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI-Assisted React Development</title>
+<meta name="author" content="React Paris Community" />
+<meta name="generator" content="Org Mode" />
+<style type="text/css">
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { }
+</style>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">AI-Assisted React Development
+<br />
+<span class="subtitle">React Paris Meetup #013 - WIP</span>
+</h1>
+<div id="outline-container-org1131fad" class="outline-2">
+<h2 id="org1131fad">The AI Revolution in Development</h2>
+<div class="outline-text-2" id="text-org1131fad">
+</div>
+<div id="outline-container-orgdf696a2" class="outline-3">
+<h3 id="orgdf696a2">A New Era</h3>
+<div class="outline-text-3" id="text-orgdf696a2">
+<blockquote>
+<p>
+"AI won't replace developers, but developers using AI will replace those who don't."
+</p>
+</blockquote>
+
+<ul class="org-ul">
+<li>Code generation is just the beginning</li>
+<li>AI assists at every stage of development</li>
+<li>The skill is knowing how to collaborate with AI</li>
+<li>Understanding limitations is crucial</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org43c3589" class="outline-3">
+<h3 id="org43c3589">What We'll Explore</h3>
+<div class="outline-text-3" id="text-org43c3589">
+<ol class="org-ol">
+<li>AI coding assistants (Copilot, Claude, etc.)</li>
+<li>AI-powered component generation</li>
+<li>Building AI features in React apps</li>
+<li>Streaming responses with Suspense</li>
+<li>Best practices and limitations</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="outline-container-org8585b9e" class="outline-2">
+<h2 id="org8585b9e">Part 1: AI Coding Assistants</h2>
+<div class="outline-text-2" id="text-org8585b9e">
+</div>
+<div id="outline-container-orgb4a275b" class="outline-3">
+<h3 id="orgb4a275b">The Landscape in 2025</h3>
+<div class="outline-text-3" id="text-orgb4a275b">
+</div>
+<div id="outline-container-org8140e93" class="outline-4">
+<h4 id="org8140e93">Major Players</h4>
+<div class="outline-text-4" id="text-org8140e93">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Tool</th>
+<th scope="col" class="org-left">Strength</th>
+<th scope="col" class="org-left">Integration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">GitHub Copilot</td>
+<td class="org-left">Inline completions</td>
+<td class="org-left">VS Code, JetBrains</td>
+</tr>
+
+<tr>
+<td class="org-left">Claude</td>
+<td class="org-left">Complex reasoning</td>
+<td class="org-left">API, Claude Code</td>
+</tr>
+
+<tr>
+<td class="org-left">Cursor</td>
+<td class="org-left">Codebase-aware</td>
+<td class="org-left">Standalone IDE</td>
+</tr>
+
+<tr>
+<td class="org-left">Codeium</td>
+<td class="org-left">Free tier</td>
+<td class="org-left">Multiple IDEs</td>
+</tr>
+
+<tr>
+<td class="org-left">Amazon Q</td>
+<td class="org-left">AWS integration</td>
+<td class="org-left">VS Code, CLI</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="outline-container-org7dd4c84" class="outline-3">
+<h3 id="org7dd4c84">Effective Prompting for React</h3>
+<div class="outline-text-3" id="text-org7dd4c84">
+</div>
+<div id="outline-container-orga155841" class="outline-4">
+<h4 id="orga155841">Be Specific</h4>
+<div class="outline-text-4" id="text-orga155841">
+<div class="org-src-container">
+<pre class="src src-text">// BAD prompt:
+"Make a form"
+
+// GOOD prompt:
+"Create a React form component with:
+- Email and password fields
+- Client-side validation using zod
+- useActionState for submission
+- Loading state during submit
+- Error display below each field
+- Accessible labels and aria attributes"
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc81e1f2" class="outline-3">
+<h3 id="orgc81e1f2">Context is King</h3>
+<div class="outline-text-3" id="text-orgc81e1f2">
+</div>
+<div id="outline-container-orgea01f49" class="outline-4">
+<h4 id="orgea01f49">Provide Examples</h4>
+<div class="outline-text-4" id="text-orgea01f49">
+<div class="org-src-container">
+<pre class="src src-text">// In your prompt or comments:
+// Follow the pattern from UserForm.tsx
+// Use our Button and Input components from @/components/ui
+// Handle errors like we do in ContactForm
+// Match the styling in forms.css
+
+// Then ask:
+"Create a newsletter subscription form following
+ our existing patterns"
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orge9c9d99" class="outline-3">
+<h3 id="orge9c9d99">What AI Does Well</h3>
+<div class="outline-text-3" id="text-orge9c9d99">
+<ul class="org-ul">
+<li>Boilerplate generation</li>
+<li>Pattern recognition and application</li>
+<li>API documentation lookup</li>
+<li>Converting between formats (JS to TS, etc.)</li>
+<li>Writing tests for existing code</li>
+<li>Explaining complex code</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgfc185d2" class="outline-3">
+<h3 id="orgfc185d2">What AI Struggles With</h3>
+<div class="outline-text-3" id="text-orgfc185d2">
+<ul class="org-ul">
+<li>Novel architectural decisions</li>
+<li>Complex state management</li>
+<li>Performance optimization (needs profiling data)</li>
+<li>Security-critical code (always review!)</li>
+<li>Understanding full system context</li>
+<li>Keeping up with latest API changes</li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org7acbf87" class="outline-2">
+<h2 id="org7acbf87">Part 2: AI Component Generation</h2>
+<div class="outline-text-2" id="text-org7acbf87">
+</div>
+<div id="outline-container-orgef89de7" class="outline-3">
+<h3 id="orgef89de7">v0.dev: Design to Code</h3>
+<div class="outline-text-3" id="text-orgef89de7">
+</div>
+<div id="outline-container-org6e335db" class="outline-4">
+<h4 id="org6e335db">From Description to Component</h4>
+<div class="outline-text-4" id="text-org6e335db">
+<div class="org-src-container">
+<pre class="src src-text">Prompt: "A pricing table with three tiers:
+Basic ($9/mo), Pro ($29/mo), Enterprise (custom).
+Each has feature list, CTA button.
+Pro tier highlighted as recommended."
+</pre>
+</div>
+
+<p>
+v0 generates:
+</p>
+<ul class="org-ul">
+<li>Complete React component</li>
+<li>Tailwind CSS styling</li>
+<li>Responsive design</li>
+<li>Basic accessibility</li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org90b1685" class="outline-3">
+<h3 id="org90b1685">Generated Code Review</h3>
+<div class="outline-text-3" id="text-org90b1685">
+</div>
+<div id="outline-container-org801a733" class="outline-4">
+<h4 id="org801a733">Always Verify</h4>
+<div class="outline-text-4" id="text-org801a733">
+<div class="org-src-container">
+<pre class="src src-jsx">// v0 might generate:
+&lt;div onClick={handleSelect}&gt;  // [!] Not keyboard accessible
+
+// Should be:
+&lt;button onClick={handleSelect}&gt;
+
+// Or with proper ARIA:
+&lt;div
+  role="button"
+  tabIndex={0}
+  onClick={handleSelect}
+  onKeyDown={(e) =&gt; {
+    if (e.key === 'Enter' || e.key === ' ') {
+      handleSelect();
+    }
+  }}
+&gt;
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org91fe7ac" class="outline-3">
+<h3 id="org91fe7ac">Integration Workflow</h3>
+<div class="outline-text-3" id="text-org91fe7ac">
+</div>
+<div id="outline-container-org6eef470" class="outline-4">
+<h4 id="org6eef470">From v0 to Production</h4>
+<div class="outline-text-4" id="text-org6eef470">
+<div class="org-src-container">
+<pre class="src src-text">1. Generate initial component in v0
+2. Copy to your codebase
+3. Replace generic styles with design tokens
+4. Add proper TypeScript types
+5. Implement actual business logic
+6. Add accessibility attributes
+7. Write tests
+8. Document in Storybook
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgfe839b2" class="outline-2">
+<h2 id="orgfe839b2">Part 3: Building AI Features in React</h2>
+<div class="outline-text-2" id="text-orgfe839b2">
+</div>
+<div id="outline-container-org0de83f3" class="outline-3">
+<h3 id="org0de83f3">The Vercel AI SDK</h3>
+<div class="outline-text-3" id="text-org0de83f3">
+</div>
+<div id="outline-container-org9fdf719" class="outline-4">
+<h4 id="org9fdf719">Quick Setup</h4>
+<div class="outline-text-4" id="text-org9fdf719">
+<div class="org-src-container">
+<pre class="src src-bash">npm install ai @ai-sdk/openai
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-jsx">// app/api/chat/route.ts
+import { openai } from '@ai-sdk/openai';
+import { streamText } from 'ai';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: openai('gpt-4-turbo'),
+    messages
+  });
+
+  return result.toDataStreamResponse();
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org0e096b5" class="outline-3">
+<h3 id="org0e096b5">Chat Interface Component</h3>
+<div class="outline-text-3" id="text-org0e096b5">
+</div>
+<div id="outline-container-org029d269" class="outline-4">
+<h4 id="org029d269">useChat Hook</h4>
+<div class="outline-text-4" id="text-org029d269">
+<div class="org-src-container">
+<pre class="src src-jsx">'use client';
+import { useChat } from 'ai/react';
+
+export function ChatInterface() {
+  const { messages, input, handleInputChange, handleSubmit, isLoading } =
+    useChat();
+
+  return (
+    &lt;div className="flex flex-col h-screen"&gt;
+      &lt;div className="flex-1 overflow-y-auto p-4"&gt;
+        {messages.map((m) =&gt; (
+          &lt;div key={m.id} className={m.role === 'user' ? 'text-right' : ''}&gt;
+            &lt;span className="font-bold"&gt;
+              {m.role === 'user' ? 'You' : 'AI'}:
+            &lt;/span&gt;
+            &lt;p&gt;{m.content}&lt;/p&gt;
+          &lt;/div&gt;
+        ))}
+      &lt;/div&gt;
+      &lt;form onSubmit={handleSubmit} className="p-4 border-t"&gt;
+        &lt;input
+          value={input}
+          onChange={handleInputChange}
+          placeholder="Ask something..."
+          disabled={isLoading}
+        /&gt;
+      &lt;/form&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org811769d" class="outline-3">
+<h3 id="org811769d">Streaming with Suspense</h3>
+<div class="outline-text-3" id="text-org811769d">
+</div>
+<div id="outline-container-org103e8f8" class="outline-4">
+<h4 id="org103e8f8">Progressive UI Updates</h4>
+<div class="outline-text-4" id="text-org103e8f8">
+<div class="org-src-container">
+<pre class="src src-jsx">'use client';
+import { useCompletion } from 'ai/react';
+
+function StreamingDemo() {
+  const { completion, input, handleInputChange, handleSubmit, isLoading } =
+    useCompletion({
+      api: '/api/completion'
+    });
+
+  return (
+    &lt;div&gt;
+      &lt;form onSubmit={handleSubmit}&gt;
+        &lt;textarea
+          value={input}
+          onChange={handleInputChange}
+          placeholder="Enter a topic..."
+        /&gt;
+        &lt;button type="submit" disabled={isLoading}&gt;
+          Generate
+        &lt;/button&gt;
+      &lt;/form&gt;
+
+      {/* Streams in real-time */}
+      &lt;div className="prose"&gt;
+        {completion}
+        {isLoading &amp;&amp; &lt;span className="animate-pulse"&gt;|&lt;/span&gt;}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orge990dec" class="outline-2">
+<h2 id="orge990dec">Part 4: Advanced Patterns</h2>
+<div class="outline-text-2" id="text-orge990dec">
+</div>
+<div id="outline-container-org63df5aa" class="outline-3">
+<h3 id="org63df5aa">Structured Output</h3>
+<div class="outline-text-3" id="text-org63df5aa">
+</div>
+<div id="outline-container-orgd3c0756" class="outline-4">
+<h4 id="orgd3c0756">JSON Mode with Zod</h4>
+<div class="outline-text-4" id="text-orgd3c0756">
+<div class="org-src-container">
+<pre class="src src-jsx">import { generateObject } from 'ai';
+import { z } from 'zod';
+
+const recipeSchema = z.object({
+  name: z.string(),
+  ingredients: z.array(z.object({
+    item: z.string(),
+    amount: z.string()
+  })),
+  steps: z.array(z.string()),
+  prepTime: z.number(),
+  difficulty: z.enum(['easy', 'medium', 'hard'])
+});
+
+const { object: recipe } = await generateObject({
+  model: openai('gpt-4-turbo'),
+  schema: recipeSchema,
+  prompt: 'Generate a recipe for chocolate chip cookies'
+});
+
+// recipe is fully typed!
+console.log(recipe.ingredients[0].item);
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org56db25a" class="outline-3">
+<h3 id="org56db25a">Tool Use / Function Calling</h3>
+<div class="outline-text-3" id="text-org56db25a">
+</div>
+<div id="outline-container-orga0aa9f6" class="outline-4">
+<h4 id="orga0aa9f6">AI with Actions</h4>
+<div class="outline-text-4" id="text-orga0aa9f6">
+<div class="org-src-container">
+<pre class="src src-jsx">import { streamText, tool } from 'ai';
+import { z } from 'zod';
+
+const result = streamText({
+  model: openai('gpt-4-turbo'),
+  messages,
+  tools: {
+    getWeather: tool({
+      description: 'Get current weather for a location',
+      parameters: z.object({
+        location: z.string().describe('City name')
+      }),
+      execute: async ({ location }) =&gt; {
+        const weather = await fetchWeatherAPI(location);
+        return weather;
+      }
+    }),
+    searchProducts: tool({
+      description: 'Search product catalog',
+      parameters: z.object({
+        query: z.string(),
+        maxPrice: z.number().optional()
+      }),
+      execute: async ({ query, maxPrice }) =&gt; {
+        return await searchCatalog(query, maxPrice);
+      }
+    })
+  }
+});
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd575b4e" class="outline-3">
+<h3 id="orgd575b4e">RAG: Retrieval Augmented Generation</h3>
+<div class="outline-text-3" id="text-orgd575b4e">
+</div>
+<div id="outline-container-orgfb3edc6" class="outline-4">
+<h4 id="orgfb3edc6">Grounding AI in Your Data</h4>
+<div class="outline-text-4" id="text-orgfb3edc6">
+<div class="org-src-container">
+<pre class="src src-text">User Query
+    |
+    v
++-------------------+
+| Embedding Model   |  Convert to vector
++-------------------+
+    |
+    v
++-------------------+
+| Vector Database   |  Find similar docs
+| (Pinecone, etc.)  |
++-------------------+
+    |
+    v
++-------------------+
+| LLM with Context  |  Answer with sources
++-------------------+
+    |
+    v
+Response with citations
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org6371ae0" class="outline-3">
+<h3 id="org6371ae0">RAG Implementation</h3>
+<div class="outline-text-3" id="text-org6371ae0">
+</div>
+<div id="outline-container-orgf2546d8" class="outline-4">
+<h4 id="orgf2546d8">Vector Search + Generation</h4>
+<div class="outline-text-4" id="text-orgf2546d8">
+<div class="org-src-container">
+<pre class="src src-jsx">async function ragQuery(question: string) {
+  // 1. Create embedding of question
+  const embedding = await createEmbedding(question);
+
+  // 2. Search vector database
+  const relevantDocs = await vectorDB.search({
+    vector: embedding,
+    topK: 5
+  });
+
+  // 3. Generate answer with context
+  const response = await generateText({
+    model: openai('gpt-4-turbo'),
+    prompt: `Answer based on these documents:
+
+${relevantDocs.map(d =&gt; d.content).join('\n\n')}
+
+Question: ${question}`
+  });
+
+  return {
+    answer: response.text,
+    sources: relevantDocs.map(d =&gt; d.metadata.url)
+  };
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org7523152" class="outline-2">
+<h2 id="org7523152">Part 5: Error Handling and UX</h2>
+<div class="outline-text-2" id="text-org7523152">
+</div>
+<div id="outline-container-org6d6e972" class="outline-3">
+<h3 id="org6d6e972">Rate Limiting</h3>
+<div class="outline-text-3" id="text-org6d6e972">
+</div>
+<div id="outline-container-orgd49c5eb" class="outline-4">
+<h4 id="orgd49c5eb">Protecting Your API</h4>
+<div class="outline-text-4" id="text-orgd49c5eb">
+<div class="org-src-container">
+<pre class="src src-jsx">import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, '1 m') // 10 per minute
+});
+
+export async function POST(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success, remaining } = await ratelimit.limit(ip);
+
+  if (!success) {
+    return new Response('Rate limited', {
+      status: 429,
+      headers: { 'X-RateLimit-Remaining': remaining.toString() }
+    });
+  }
+
+  // Process AI request...
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org2699de2" class="outline-3">
+<h3 id="org2699de2">Graceful Degradation</h3>
+<div class="outline-text-3" id="text-org2699de2">
+</div>
+<div id="outline-container-org167decc" class="outline-4">
+<h4 id="org167decc">Handling Failures</h4>
+<div class="outline-text-4" id="text-org167decc">
+<div class="org-src-container">
+<pre class="src src-jsx">function AIFeature() {
+  const { error, isLoading, retry } = useChat({
+    onError: (err) =&gt; {
+      // Log to monitoring
+      captureException(err);
+    }
+  });
+
+  if (error) {
+    return (
+      &lt;div className="bg-yellow-50 p-4 rounded"&gt;
+        &lt;p&gt;AI is temporarily unavailable.&lt;/p&gt;
+        &lt;button onClick={retry}&gt;Try again&lt;/button&gt;
+        &lt;p className="text-sm mt-2"&gt;
+          You can still use the app manually.
+        &lt;/p&gt;
+      &lt;/div&gt;
+    );
+  }
+
+  // Normal render...
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf7c98a5" class="outline-3">
+<h3 id="orgf7c98a5">Cost Optimization</h3>
+<div class="outline-text-3" id="text-orgf7c98a5">
+</div>
+<div id="outline-container-org20ced8e" class="outline-4">
+<h4 id="org20ced8e">Strategies</h4>
+<div class="outline-text-4" id="text-org20ced8e">
+<ul class="org-ul">
+<li>Cache common queries</li>
+<li>Use smaller models for simple tasks</li>
+<li>Implement token budgets per user</li>
+<li>Stream responses (better UX, no change in cost)</li>
+<li>Batch requests where possible</li>
+<li>Monitor usage with observability tools</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org4c9352e" class="outline-2">
+<h2 id="org4c9352e">Part 6: Responsible AI Integration</h2>
+<div class="outline-text-2" id="text-org4c9352e">
+</div>
+<div id="outline-container-org9e490cd" class="outline-3">
+<h3 id="org9e490cd">Content Moderation</h3>
+<div class="outline-text-3" id="text-org9e490cd">
+</div>
+<div id="outline-container-org3ffe16e" class="outline-4">
+<h4 id="org3ffe16e">Filtering Harmful Content</h4>
+<div class="outline-text-4" id="text-org3ffe16e">
+<div class="org-src-container">
+<pre class="src src-jsx">import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+async function moderatedGeneration(prompt: string) {
+  // Pre-check user input
+  const moderation = await openai.moderations.create({
+    input: prompt
+  });
+
+  if (moderation.results[0].flagged) {
+    throw new Error('Content policy violation');
+  }
+
+  // Safe to proceed
+  const response = await generateText({
+    model: openai('gpt-4-turbo'),
+    prompt,
+    // Also set system prompt for safety
+    system: `You are a helpful assistant. Never provide
+             harmful, illegal, or inappropriate content.`
+  });
+
+  return response;
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org26712ea" class="outline-3">
+<h3 id="org26712ea">Transparency with Users</h3>
+<div class="outline-text-3" id="text-org26712ea">
+</div>
+<div id="outline-container-org679436c" class="outline-4">
+<h4 id="org679436c">Best Practices</h4>
+<div class="outline-text-4" id="text-org679436c">
+<ul class="org-ul">
+<li>Clearly label AI-generated content</li>
+<li>Show confidence levels when appropriate</li>
+<li>Allow users to provide feedback</li>
+<li>Explain what data is used</li>
+<li>Provide opt-out options</li>
+<li>Document AI limitations</li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org80b20bb" class="outline-3">
+<h3 id="org80b20bb">The Human-AI Balance</h3>
+<div class="outline-text-3" id="text-org80b20bb">
+<div class="org-src-container">
+<pre class="src src-text">+------------------------------------------+
+|              Best Results                |
++------------------------------------------+
+|                                          |
+|     Human Expertise + AI Assistance      |
+|                                          |
+|  +----------------+  +----------------+  |
+|  | Human:         |  | AI:            |  |
+|  | - Judgment     |  | - Speed        |  |
+|  | - Context      |  | - Consistency  |  |
+|  | - Creativity   |  | - Scale        |  |
+|  | - Ethics       |  | - Patterns     |  |
+|  +----------------+  +----------------+  |
+|                                          |
++------------------------------------------+
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orge19ad68" class="outline-2">
+<h2 id="orge19ad68">Summary</h2>
+<div class="outline-text-2" id="text-orge19ad68">
+</div>
+<div id="outline-container-org116e33e" class="outline-3">
+<h3 id="org116e33e">Key Takeaways</h3>
+<div class="outline-text-3" id="text-org116e33e">
+<ol class="org-ol">
+<li>AI assistants multiply developer productivity</li>
+<li>Generated code needs human review</li>
+<li>Vercel AI SDK simplifies streaming UIs</li>
+<li>Structured output with Zod is powerful</li>
+<li>Always handle errors gracefully</li>
+<li>Be transparent about AI usage</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org58e8cb9" class="outline-3">
+<h3 id="org58e8cb9">The Future</h3>
+<div class="outline-text-3" id="text-org58e8cb9">
+<ul class="org-ul">
+<li>More AI-native React patterns emerging</li>
+<li>Better integration with React Server Components</li>
+<li>Local/edge AI models for privacy</li>
+<li>AI-assisted testing and debugging</li>
+<li>Collaborative AI pair programming</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgf4823e3" class="outline-3">
+<h3 id="orgf4823e3">Resources</h3>
+<div class="outline-text-3" id="text-orgf4823e3">
+<ul class="org-ul">
+<li><a href="https://sdk.vercel.ai/">Vercel AI SDK</a></li>
+<li><a href="https://v0.dev/">v0.dev - AI Component Generation</a></li>
+<li><a href="https://github.com/features/copilot">GitHub Copilot</a></li>
+<li><a href="https://claude.ai/">Claude by Anthropic</a></li>
+<li><a href="https://www.anthropic.com/claude-code">Claude Code CLI</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org62145d8" class="outline-2">
+<h2 id="org62145d8">Questions?</h2>
+<div class="outline-text-2" id="text-org62145d8">
+<div class="org-center">
+<p>
+Embrace AI as your coding partner!
+</p>
+
+<p>
+React Paris Meetup #013
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="date">Date: 2025</p>
+<p class="author">Author: React Paris Community</p>
+<p class="date">Created: 2025-12-13 Sat 20:27</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

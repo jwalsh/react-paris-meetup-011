@@ -1,0 +1,878 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2025-12-13 Sat 20:27 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>React Performance Masterclass</title>
+<meta name="author" content="React Paris Community" />
+<meta name="generator" content="Org Mode" />
+<style type="text/css">
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { }
+</style>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">React Performance Masterclass
+<br />
+<span class="subtitle">React Paris Meetup #013 - WIP</span>
+</h1>
+<div id="outline-container-orgd6b2d6a" class="outline-2">
+<h2 id="orgd6b2d6a">The Performance Mindset</h2>
+<div class="outline-text-2" id="text-orgd6b2d6a">
+</div>
+<div id="outline-container-org8d80cbb" class="outline-3">
+<h3 id="org8d80cbb">Measure First, Optimize Second</h3>
+<div class="outline-text-3" id="text-org8d80cbb">
+<blockquote>
+<p>
+"Premature optimization is the root of all evil"
+&#x2013; Donald Knuth
+</p>
+</blockquote>
+
+<ul class="org-ul">
+<li>Profile before you optimize</li>
+<li>Real user metrics &gt; synthetic benchmarks</li>
+<li>Perceived performance matters more than actual</li>
+<li>Every optimization has a cost</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org6f4cc82" class="outline-3">
+<h3 id="org6f4cc82">What We'll Master</h3>
+<div class="outline-text-3" id="text-org6f4cc82">
+<ol class="org-ol">
+<li>React DevTools Profiler deep dive</li>
+<li>Identifying unnecessary re-renders</li>
+<li>useMemo/useCallback: truth and myths</li>
+<li>Code splitting strategies</li>
+<li>Core Web Vitals optimization</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="outline-container-orge766b4c" class="outline-2">
+<h2 id="orge766b4c">Part 1: Profiling with DevTools</h2>
+<div class="outline-text-2" id="text-orge766b4c">
+</div>
+<div id="outline-container-org68f7435" class="outline-3">
+<h3 id="org68f7435">React DevTools Profiler</h3>
+<div class="outline-text-3" id="text-org68f7435">
+</div>
+<div id="outline-container-org0ab82d0" class="outline-4">
+<h4 id="org0ab82d0">Opening the Profiler</h4>
+<div class="outline-text-4" id="text-org0ab82d0">
+<div class="org-src-container">
+<pre class="src src-text">Chrome/Firefox DevTools
+    |
+    +-- Components tab (tree view)
+    |
+    +-- Profiler tab (performance)
+         |
+         +-- Start recording
+         +-- Perform interactions
+         +-- Stop and analyze
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orga97293d" class="outline-3">
+<h3 id="orga97293d">Understanding the Flame Graph</h3>
+<div class="outline-text-3" id="text-orga97293d">
+<div class="org-src-container">
+<pre class="src src-text">Commit #1 (200ms)
++------------------------------------------+
+| App (5ms)                                |
+| +--------------------------------------+ |
+| | Header (1ms)     | Main (180ms)      | |
+| |                  | +----------------+ | |
+| |                  | | ProductList    | | |
+| |                  | | (150ms) [!!!]  | | |
+| |                  | +----------------+ | |
+| +--------------------------------------+ |
++------------------------------------------+
+
+Yellow/Red = Slow renders
+Gray = Did not render
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org703a12a" class="outline-3">
+<h3 id="org703a12a">Key Metrics to Watch</h3>
+<div class="outline-text-3" id="text-org703a12a">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Metric</th>
+<th scope="col" class="org-left">What It Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">Render duration</td>
+<td class="org-left">Time spent in render phase</td>
+</tr>
+
+<tr>
+<td class="org-left">Commit duration</td>
+<td class="org-left">Time to apply changes to DOM</td>
+</tr>
+
+<tr>
+<td class="org-left">Renders count</td>
+<td class="org-left">Times component re-rendered</td>
+</tr>
+
+<tr>
+<td class="org-left">Why did this render?</td>
+<td class="org-left">Reason for re-render (props/state/context)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-orga645cb4" class="outline-3">
+<h3 id="orga645cb4">Ranked Chart View</h3>
+<div class="outline-text-3" id="text-orga645cb4">
+<div class="org-src-container">
+<pre class="src src-text">Sorted by render time:
+
+1. ProductList        150ms  ████████████████████
+2. ProductItem x 100   30ms  ████
+3. SearchBar           15ms  ██
+4. Header               1ms  |
+5. Footer               1ms  |
+
+Focus optimization on top items first!
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org2e6f481" class="outline-2">
+<h2 id="org2e6f481">Part 2: Unnecessary Re-renders</h2>
+<div class="outline-text-2" id="text-org2e6f481">
+</div>
+<div id="outline-container-org69d982d" class="outline-3">
+<h3 id="org69d982d">The Re-render Problem</h3>
+<div class="outline-text-3" id="text-org69d982d">
+<div class="org-src-container">
+<pre class="src src-jsx">function Parent() {
+  const [count, setCount] = useState(0);
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setCount(c =&gt; c + 1)}&gt;
+        {count}
+      &lt;/button&gt;
+      {/* Child re-renders every time! */}
+      &lt;ExpensiveChild /&gt;
+    &lt;/div&gt;
+  );
+}
+
+function ExpensiveChild() {
+  // Heavy computation here
+  const result = heavyCalculation();
+  return &lt;div&gt;{result}&lt;/div&gt;;
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org94f9b59" class="outline-3">
+<h3 id="org94f9b59">Solution 1: React.memo</h3>
+<div class="outline-text-3" id="text-org94f9b59">
+<div class="org-src-container">
+<pre class="src src-jsx">const ExpensiveChild = React.memo(function ExpensiveChild() {
+  const result = heavyCalculation();
+  return &lt;div&gt;{result}&lt;/div&gt;;
+});
+
+// Now only re-renders if props change
+</pre>
+</div>
+
+<p>
+But beware&#x2026;
+</p>
+</div>
+</div>
+<div id="outline-container-org3161f40" class="outline-3">
+<h3 id="org3161f40">The memo Trap</h3>
+<div class="outline-text-3" id="text-org3161f40">
+<div class="org-src-container">
+<pre class="src src-jsx">function Parent() {
+  const [count, setCount] = useState(0);
+
+  // New object every render - memo breaks!
+  const style = { color: 'red' };
+
+  // New function every render - memo breaks!
+  const handleClick = () =&gt; console.log('clicked');
+
+  return (
+    &lt;MemoizedChild
+      style={style}        // Always new reference
+      onClick={handleClick} // Always new reference
+    /&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orge78b708" class="outline-3">
+<h3 id="orge78b708">Solution: Stable References</h3>
+<div class="outline-text-3" id="text-orge78b708">
+<div class="org-src-container">
+<pre class="src src-jsx">function Parent() {
+  const [count, setCount] = useState(0);
+
+  // Stable object reference
+  const style = useMemo(() =&gt; ({ color: 'red' }), []);
+
+  // Stable function reference
+  const handleClick = useCallback(() =&gt; {
+    console.log('clicked');
+  }, []);
+
+  return (
+    &lt;MemoizedChild
+      style={style}
+      onClick={handleClick}
+    /&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org461586c" class="outline-2">
+<h2 id="org461586c">Part 3: useMemo and useCallback Truth</h2>
+<div class="outline-text-2" id="text-org461586c">
+</div>
+<div id="outline-container-orgb7a04d8" class="outline-3">
+<h3 id="orgb7a04d8">The Myth</h3>
+<div class="outline-text-3" id="text-orgb7a04d8">
+<blockquote>
+<p>
+"Always use useMemo and useCallback for performance"
+</p>
+</blockquote>
+
+<p>
+The Reality:
+</p>
+<ul class="org-ul">
+<li>They have overhead (memory + comparison)</li>
+<li>Most computations are fast enough</li>
+<li>Only useful with memo'd children or expensive calculations</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org7f1056f" class="outline-3">
+<h3 id="org7f1056f">When useMemo Actually Helps</h3>
+<div class="outline-text-3" id="text-org7f1056f">
+<div class="org-src-container">
+<pre class="src src-jsx">// GOOD: Expensive computation
+const sortedItems = useMemo(() =&gt; {
+  return items
+    .filter(complexFilter)
+    .sort(complexSort)
+    .map(complexTransform);
+}, [items]);
+
+// GOOD: Reference for memo'd child
+const config = useMemo(() =&gt; ({
+  theme: 'dark',
+  locale: 'fr'
+}), []);
+
+// BAD: Simple computation
+const doubled = useMemo(() =&gt; count * 2, [count]);
+// Just do: const doubled = count * 2;
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdf28d7c" class="outline-3">
+<h3 id="orgdf28d7c">When useCallback Actually Helps</h3>
+<div class="outline-text-3" id="text-orgdf28d7c">
+<div class="org-src-container">
+<pre class="src src-jsx">// GOOD: Passed to memo'd child
+const MemoChild = React.memo(Child);
+
+function Parent() {
+  const handleClick = useCallback(() =&gt; {
+    doSomething();
+  }, []);
+
+  return &lt;MemoChild onClick={handleClick} /&gt;;
+}
+
+// GOOD: Dependency of useEffect
+const fetchData = useCallback(() =&gt; {
+  // ...
+}, [userId]);
+
+useEffect(() =&gt; {
+  fetchData();
+}, [fetchData]);
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org7707f9d" class="outline-3">
+<h3 id="org7707f9d">The Decision Framework</h3>
+<div class="outline-text-3" id="text-org7707f9d">
+<div class="org-src-container">
+<pre class="src src-text">Should I use useMemo/useCallback?
+
+1. Is computation &gt; 1ms? (Profile it!)
+   -&gt; Yes: Consider useMemo
+
+2. Is value passed to memo'd child?
+   -&gt; Yes: Use useMemo/useCallback
+
+3. Is function a useEffect dependency?
+   -&gt; Yes: Use useCallback
+
+4. None of the above?
+   -&gt; Skip it, add complexity only when needed
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc79e878" class="outline-2">
+<h2 id="orgc79e878">Part 4: Code Splitting</h2>
+<div class="outline-text-2" id="text-orgc79e878">
+</div>
+<div id="outline-container-org640afe1" class="outline-3">
+<h3 id="org640afe1">The Bundle Problem</h3>
+<div class="outline-text-3" id="text-org640afe1">
+<div class="org-src-container">
+<pre class="src src-text">Your app bundle: 2MB
+
+User visits homepage:
+  Needs: 200KB
+  Downloads: 2MB  [!!!]
+  Parses: 2MB JavaScript
+
+Time to Interactive: 8 seconds
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org23960e4" class="outline-3">
+<h3 id="org23960e4">React.lazy + Suspense</h3>
+<div class="outline-text-3" id="text-org23960e4">
+<div class="org-src-container">
+<pre class="src src-jsx">import { lazy, Suspense } from 'react';
+
+// Split at route level
+const Dashboard = lazy(() =&gt; import('./pages/Dashboard'));
+const Settings = lazy(() =&gt; import('./pages/Settings'));
+const Analytics = lazy(() =&gt;
+  import('./pages/Analytics')
+);
+
+function App() {
+  return (
+    &lt;Suspense fallback={&lt;PageLoader /&gt;}&gt;
+      &lt;Routes&gt;
+        &lt;Route path="/dashboard" element={&lt;Dashboard /&gt;} /&gt;
+        &lt;Route path="/settings" element={&lt;Settings /&gt;} /&gt;
+        &lt;Route path="/analytics" element={&lt;Analytics /&gt;} /&gt;
+      &lt;/Routes&gt;
+    &lt;/Suspense&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd434b97" class="outline-3">
+<h3 id="orgd434b97">Strategic Splitting Points</h3>
+<div class="outline-text-3" id="text-orgd434b97">
+<div class="org-src-container">
+<pre class="src src-text">Split here:
+  +-- Route boundaries (pages)
+  +-- Modal/dialog content
+  +-- Below-the-fold content
+  +-- Admin-only features
+  +-- Heavy libraries (charts, editors)
+
+Don't split:
+  +-- Small components
+  +-- Frequently used components
+  +-- Critical path components
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org4a11396" class="outline-3">
+<h3 id="org4a11396">Named Exports with lazy</h3>
+<div class="outline-text-3" id="text-org4a11396">
+<div class="org-src-container">
+<pre class="src src-jsx">// components/Charts.tsx exports multiple
+export const LineChart = () =&gt; { /*...*/ };
+export const BarChart = () =&gt; { /*...*/ };
+export const PieChart = () =&gt; { /*...*/ };
+
+// Lazy load specific export
+const LineChart = lazy(() =&gt;
+  import('./components/Charts').then(module =&gt; ({
+    default: module.LineChart
+  }))
+);
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orga2d017e" class="outline-2">
+<h2 id="orga2d017e">Part 5: Core Web Vitals</h2>
+<div class="outline-text-2" id="text-orga2d017e">
+</div>
+<div id="outline-container-org4bd5566" class="outline-3">
+<h3 id="org4bd5566">The Three Vital Metrics</h3>
+<div class="outline-text-3" id="text-org4bd5566">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Metric</th>
+<th scope="col" class="org-left">Name</th>
+<th scope="col" class="org-left">Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">LCP</td>
+<td class="org-left">Largest Contentful Paint</td>
+<td class="org-left">&lt; 2.5s</td>
+</tr>
+
+<tr>
+<td class="org-left">INP</td>
+<td class="org-left">Interaction to Next Paint</td>
+<td class="org-left">&lt; 200ms</td>
+</tr>
+
+<tr>
+<td class="org-left">CLS</td>
+<td class="org-left">Cumulative Layout Shift</td>
+<td class="org-left">&lt; 0.1</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-orgac09f16" class="outline-3">
+<h3 id="orgac09f16">LCP Optimization</h3>
+<div class="outline-text-3" id="text-orgac09f16">
+<div class="org-src-container">
+<pre class="src src-jsx">// 1. Preload critical images
+&lt;link
+  rel="preload"
+  href="/hero.jpg"
+  as="image"
+  fetchpriority="high"
+/&gt;
+
+// 2. Use Next.js Image with priority
+import Image from 'next/image';
+
+&lt;Image
+  src="/hero.jpg"
+  priority  // Preloads the image
+  fill
+  sizes="100vw"
+/&gt;
+
+// 3. Avoid lazy loading above-the-fold content
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgcc1ca66" class="outline-3">
+<h3 id="orgcc1ca66">INP Optimization</h3>
+<div class="outline-text-3" id="text-orgcc1ca66">
+<div class="org-src-container">
+<pre class="src src-jsx">// Break up long tasks
+function handleClick() {
+  // BAD: One long task (blocks main thread)
+  processAllItems(items);
+
+  // GOOD: Yield to browser
+  for (const item of items) {
+    processItem(item);
+    await scheduler.yield(); // or setTimeout(0)
+  }
+}
+
+// Use React concurrent features
+function SearchResults({ query }) {
+  const [results, setResults] = useState([]);
+
+  const deferredQuery = useDeferredValue(query);
+  // Results update without blocking input
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org17b9e85" class="outline-3">
+<h3 id="org17b9e85">CLS Optimization</h3>
+<div class="outline-text-3" id="text-org17b9e85">
+<div class="org-src-container">
+<pre class="src src-jsx">// 1. Always set dimensions
+&lt;img
+  src="/photo.jpg"
+  width={800}
+  height={600}
+  alt="Photo"
+/&gt;
+
+// 2. Reserve space for async content
+&lt;div style={{ minHeight: '200px' }}&gt;
+  &lt;Suspense fallback={&lt;Skeleton height={200} /&gt;}&gt;
+    &lt;AsyncContent /&gt;
+  &lt;/Suspense&gt;
+&lt;/div&gt;
+
+// 3. Avoid inserting content above existing
+// Use transform instead of top/left for animations
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org4aa7fdf" class="outline-2">
+<h2 id="org4aa7fdf">Part 6: Advanced Patterns</h2>
+<div class="outline-text-2" id="text-org4aa7fdf">
+</div>
+<div id="outline-container-org78ec44e" class="outline-3">
+<h3 id="org78ec44e">Virtualization for Long Lists</h3>
+<div class="outline-text-3" id="text-org78ec44e">
+<div class="org-src-container">
+<pre class="src src-jsx">import { useVirtualizer } from '@tanstack/react-virtual';
+
+function VirtualList({ items }) {
+  const parentRef = useRef(null);
+
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () =&gt; parentRef.current,
+    estimateSize: () =&gt; 50,
+    overscan: 5
+  });
+
+  return (
+    &lt;div ref={parentRef} style={{ height: '400px', overflow: 'auto' }}&gt;
+      &lt;div style={{ height: virtualizer.getTotalSize() }}&gt;
+        {virtualizer.getVirtualItems().map(row =&gt; (
+          &lt;div
+            key={row.key}
+            style={{
+              position: 'absolute',
+              top: row.start,
+              height: row.size
+            }}
+          &gt;
+            {items[row.index].name}
+          &lt;/div&gt;
+        ))}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org2d2181e" class="outline-3">
+<h3 id="org2d2181e">Web Workers for Heavy Computation</h3>
+<div class="outline-text-3" id="text-org2d2181e">
+<div class="org-src-container">
+<pre class="src src-jsx">// worker.js
+self.onmessage = (e) =&gt; {
+  const result = heavyComputation(e.data);
+  self.postMessage(result);
+};
+
+// Component
+function DataProcessor({ data }) {
+  const [result, setResult] = useState(null);
+
+  useEffect(() =&gt; {
+    const worker = new Worker('worker.js');
+    worker.postMessage(data);
+    worker.onmessage = (e) =&gt; setResult(e.data);
+    return () =&gt; worker.terminate();
+  }, [data]);
+
+  return result ? &lt;Results data={result} /&gt; : &lt;Loading /&gt;;
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orga8ec6a2" class="outline-2">
+<h2 id="orga8ec6a2">Summary</h2>
+<div class="outline-text-2" id="text-orga8ec6a2">
+</div>
+<div id="outline-container-org1449b9f" class="outline-3">
+<h3 id="org1449b9f">Performance Checklist</h3>
+<div class="outline-text-3" id="text-org1449b9f">
+<ul class="org-ul">
+<li class="off"><code>[&#xa0;]</code> Profile before optimizing</li>
+<li class="off"><code>[&#xa0;]</code> Fix unnecessary re-renders first</li>
+<li class="off"><code>[&#xa0;]</code> Use memo strategically, not everywhere</li>
+<li class="off"><code>[&#xa0;]</code> Code split at route boundaries</li>
+<li class="off"><code>[&#xa0;]</code> Optimize Core Web Vitals</li>
+<li class="off"><code>[&#xa0;]</code> Virtualize long lists</li>
+<li class="off"><code>[&#xa0;]</code> Defer non-critical work</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org70f6ced" class="outline-3">
+<h3 id="org70f6ced">Resources</h3>
+<div class="outline-text-3" id="text-org70f6ced">
+<ul class="org-ul">
+<li><a href="https://react.dev/learn/render-and-commit">React: Render and Commit</a></li>
+<li><a href="https://web.dev/vitals/">Web Vitals</a></li>
+<li><a href="https://tanstack.com/virtual">TanStack Virtual</a></li>
+<li><a href="https://million.dev/">Million.js - Make React Faster</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org5b615c4" class="outline-2">
+<h2 id="org5b615c4">Questions?</h2>
+<div class="outline-text-2" id="text-org5b615c4">
+<div class="org-center">
+<p>
+Performance is a feature!
+</p>
+
+<p>
+React Paris Meetup #013
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="date">Date: 2025</p>
+<p class="author">Author: React Paris Community</p>
+<p class="date">Created: 2025-12-13 Sat 20:27</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

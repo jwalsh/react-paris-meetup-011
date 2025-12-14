@@ -1,0 +1,815 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2025-12-13 Sat 20:26 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>React Server Components Deep Dive</title>
+<meta name="author" content="React Paris Community" />
+<meta name="generator" content="Org Mode" />
+<style type="text/css">
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { }
+</style>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">React Server Components Deep Dive
+<br />
+<span class="subtitle">React Paris Meetup #012 - WIP</span>
+</h1>
+<div id="outline-container-org7d57e1f" class="outline-2">
+<h2 id="org7d57e1f">Introduction</h2>
+<div class="outline-text-2" id="text-org7d57e1f">
+</div>
+<div id="outline-container-orga2c078c" class="outline-3">
+<h3 id="orga2c078c">The Biggest Shift Since Hooks</h3>
+<div class="outline-text-3" id="text-orga2c078c">
+<ul class="org-ul">
+<li>React Server Components (RSC) fundamentally change how we build apps</li>
+<li>Not just SSR - a new component model</li>
+<li>Server and client components coexist</li>
+<li>Data fetching at the component level</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org0f81a76" class="outline-3">
+<h3 id="org0f81a76">What We'll Cover</h3>
+<div class="outline-text-3" id="text-org0f81a76">
+<ol class="org-ol">
+<li>RSC vs SSR vs SSG</li>
+<li>The server/client boundary</li>
+<li>Data fetching patterns</li>
+<li>Streaming and Suspense</li>
+<li>Practical patterns with Next.js</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="outline-container-org08825ef" class="outline-2">
+<h2 id="org08825ef">Part 1: RSC Architecture</h2>
+<div class="outline-text-2" id="text-org08825ef">
+</div>
+<div id="outline-container-orgda4a349" class="outline-3">
+<h3 id="orgda4a349">SSR vs SSG vs RSC</h3>
+<div class="outline-text-3" id="text-orgda4a349">
+</div>
+<div id="outline-container-orga3e3a2f" class="outline-4">
+<h4 id="orga3e3a2f">Server-Side Rendering (SSR)</h4>
+<div class="outline-text-4" id="text-orga3e3a2f">
+<div class="org-src-container">
+<pre class="src src-text">Request -&gt; Server renders full HTML -&gt; Hydration -&gt; Interactive
+</pre>
+</div>
+
+<ul class="org-ul">
+<li>Full page rendered on each request</li>
+<li>JavaScript bundle still sent</li>
+<li>Hydration required for interactivity</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org11b4a88" class="outline-4">
+<h4 id="org11b4a88">Static Site Generation (SSG)</h4>
+<div class="outline-text-4" id="text-org11b4a88">
+<div class="org-src-container">
+<pre class="src src-text">Build time -&gt; HTML generated -&gt; Served as static -&gt; Hydration
+</pre>
+</div>
+
+<ul class="org-ul">
+<li>Pages pre-rendered at build</li>
+<li>Fast initial load</li>
+<li>Limited dynamic content</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org000afce" class="outline-4">
+<h4 id="org000afce">React Server Components</h4>
+<div class="outline-text-4" id="text-org000afce">
+<div class="org-src-container">
+<pre class="src src-text">Request -&gt; Server Components execute -&gt; Serialized output -&gt; Client merges
+</pre>
+</div>
+
+<ul class="org-ul">
+<li>Components execute on server only</li>
+<li>No JavaScript sent for server components</li>
+<li>Seamless integration with client components</li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-orgdad4c32" class="outline-3">
+<h3 id="orgdad4c32">The Mental Model</h3>
+<div class="outline-text-3" id="text-orgdad4c32">
+<div class="org-src-container">
+<pre class="src src-text">+----------------------------------+
+|         Server Components        |
+|  +----------------------------+  |
+|  | - Database queries         |  |
+|  | - File system access       |  |
+|  | - API calls (no CORS)      |  |
+|  | - Heavy computations       |  |
+|  +----------------------------+  |
++----------------------------------+
+              |
+              v
++----------------------------------+
+|         Client Components        |
+|  +----------------------------+  |
+|  | - Event handlers          |  |
+|  | - useState, useEffect     |  |
+|  | - Browser APIs            |  |
+|  | - Interactive UI          |  |
+|  +----------------------------+  |
++----------------------------------+
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org3ba22af" class="outline-2">
+<h2 id="org3ba22af">Part 2: Server vs Client Boundary</h2>
+<div class="outline-text-2" id="text-org3ba22af">
+</div>
+<div id="outline-container-org95154e0" class="outline-3">
+<h3 id="org95154e0">Default: Server Components</h3>
+<div class="outline-text-3" id="text-org95154e0">
+<div class="org-src-container">
+<pre class="src src-jsx">// app/page.tsx - Server Component by default
+async function ProductPage({ id }) {
+  // Direct database access!
+  const product = await db.products.findUnique({
+    where: { id }
+  });
+
+  return (
+    &lt;div&gt;
+      &lt;h1&gt;{product.name}&lt;/h1&gt;
+      &lt;p&gt;{product.description}&lt;/p&gt;
+      &lt;AddToCartButton product={product} /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgcf1bdb5" class="outline-3">
+<h3 id="orgcf1bdb5">Opting into Client</h3>
+<div class="outline-text-3" id="text-orgcf1bdb5">
+<div class="org-src-container">
+<pre class="src src-jsx">"use client";
+
+// components/AddToCartButton.tsx
+import { useState } from 'react';
+
+export function AddToCartButton({ product }) {
+  const [added, setAdded] = useState(false);
+
+  return (
+    &lt;button onClick={() =&gt; setAdded(true)}&gt;
+      {added ? 'Added!' : 'Add to Cart'}
+    &lt;/button&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgac740b3" class="outline-3">
+<h3 id="orgac740b3">The Boundary Rules</h3>
+<div class="outline-text-3" id="text-orgac740b3">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Server Components CAN</th>
+<th scope="col" class="org-left">Server Components CANNOT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">Import client components</td>
+<td class="org-left">Use hooks (useState, etc.)</td>
+</tr>
+
+<tr>
+<td class="org-left">Fetch data directly</td>
+<td class="org-left">Use browser APIs</td>
+</tr>
+
+<tr>
+<td class="org-left">Access backend resources</td>
+<td class="org-left">Handle events</td>
+</tr>
+
+<tr>
+<td class="org-left">Keep secrets secure</td>
+<td class="org-left">Store client state</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org6ebe3a5" class="outline-3">
+<h3 id="org6ebe3a5">Common Mistake: Props Serialization</h3>
+<div class="outline-text-3" id="text-org6ebe3a5">
+<div class="org-src-container">
+<pre class="src src-jsx">// BAD: Functions can't cross the boundary
+&lt;ClientComponent onSubmit={handleSubmit} /&gt;
+
+// BAD: Classes and complex objects
+&lt;ClientComponent data={new Date()} /&gt;
+
+// GOOD: Serializable data only
+&lt;ClientComponent
+  timestamp={date.toISOString()}
+  productId={product.id}
+/&gt;
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgbb79249" class="outline-2">
+<h2 id="orgbb79249">Part 3: Data Fetching Patterns</h2>
+<div class="outline-text-2" id="text-orgbb79249">
+</div>
+<div id="outline-container-org4dbbe43" class="outline-3">
+<h3 id="org4dbbe43">Pattern 1: Direct Database Access</h3>
+<div class="outline-text-3" id="text-org4dbbe43">
+<div class="org-src-container">
+<pre class="src src-jsx">// app/users/page.tsx
+import { prisma } from '@/lib/prisma';
+
+export default async function UsersPage() {
+  const users = await prisma.user.findMany({
+    select: { id: true, name: true, email: true }
+  });
+
+  return (
+    &lt;ul&gt;
+      {users.map(user =&gt; (
+        &lt;li key={user.id}&gt;{user.name}&lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+}
+</pre>
+</div>
+
+<p>
+No API routes needed!
+</p>
+</div>
+</div>
+<div id="outline-container-org28dbf74" class="outline-3">
+<h3 id="org28dbf74">Pattern 2: Parallel Data Fetching</h3>
+<div class="outline-text-3" id="text-org28dbf74">
+<div class="org-src-container">
+<pre class="src src-jsx">export default async function Dashboard() {
+  // Fetch in parallel
+  const [user, posts, analytics] = await Promise.all([
+    getUser(),
+    getPosts(),
+    getAnalytics()
+  ]);
+
+  return (
+    &lt;&gt;
+      &lt;UserProfile user={user} /&gt;
+      &lt;PostList posts={posts} /&gt;
+      &lt;AnalyticsChart data={analytics} /&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org1108966" class="outline-3">
+<h3 id="org1108966">Pattern 3: Nested Suspense Boundaries</h3>
+<div class="outline-text-3" id="text-org1108966">
+<div class="org-src-container">
+<pre class="src src-jsx">export default function Page() {
+  return (
+    &lt;div&gt;
+      &lt;h1&gt;Dashboard&lt;/h1&gt;
+
+      &lt;Suspense fallback={&lt;UserSkeleton /&gt;}&gt;
+        &lt;UserSection /&gt;
+      &lt;/Suspense&gt;
+
+      &lt;Suspense fallback={&lt;PostsSkeleton /&gt;}&gt;
+        &lt;PostsSection /&gt;
+      &lt;/Suspense&gt;
+
+      &lt;Suspense fallback={&lt;ChartSkeleton /&gt;}&gt;
+        &lt;AnalyticsSection /&gt;
+      &lt;/Suspense&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+</div>
+
+<p>
+Sections load independently!
+</p>
+</div>
+</div>
+</div>
+<div id="outline-container-org514e544" class="outline-2">
+<h2 id="org514e544">Part 4: Streaming and Progressive Rendering</h2>
+<div class="outline-text-2" id="text-org514e544">
+</div>
+<div id="outline-container-orgba6667b" class="outline-3">
+<h3 id="orgba6667b">How Streaming Works</h3>
+<div class="outline-text-3" id="text-orgba6667b">
+<div class="org-src-container">
+<pre class="src src-text">Time ---&gt;
+
+Traditional SSR:
+[====== Wait for all data ======] -&gt; [Send HTML] -&gt; [Hydrate]
+
+Streaming RSC:
+[Shell] -&gt; [Component A] -&gt; [Component B] -&gt; [Component C]
+   |            |               |               |
+   v            v               v               v
+ Render      Stream          Stream          Stream
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org8220654" class="outline-3">
+<h3 id="org8220654">loading.tsx Convention</h3>
+<div class="outline-text-3" id="text-org8220654">
+<div class="org-src-container">
+<pre class="src src-jsx">// app/products/loading.tsx
+export default function Loading() {
+  return (
+    &lt;div className="grid grid-cols-3 gap-4"&gt;
+      {[...Array(9)].map((_, i) =&gt; (
+        &lt;ProductSkeleton key={i} /&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}
+
+// Automatically wraps app/products/page.tsx
+// with Suspense boundary
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org661de6d" class="outline-3">
+<h3 id="org661de6d">Streaming with fetch()</h3>
+<div class="outline-text-3" id="text-org661de6d">
+<div class="org-src-container">
+<pre class="src src-jsx">// Enable streaming for slow APIs
+async function SlowDataComponent() {
+  const response = await fetch(
+    'https://api.example.com/slow-endpoint',
+    {
+      cache: 'no-store'  // Disable caching for fresh data
+    }
+  );
+  const data = await response.json();
+
+  return &lt;DataDisplay data={data} /&gt;;
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org12a665f" class="outline-2">
+<h2 id="org12a665f">Part 5: Server Actions</h2>
+<div class="outline-text-2" id="text-org12a665f">
+</div>
+<div id="outline-container-orgd67e552" class="outline-3">
+<h3 id="orgd67e552">Form Mutations Without API Routes</h3>
+<div class="outline-text-3" id="text-orgd67e552">
+<div class="org-src-container">
+<pre class="src src-jsx">// app/actions.ts
+"use server";
+
+export async function createPost(formData: FormData) {
+  const title = formData.get('title');
+  const content = formData.get('content');
+
+  await db.posts.create({
+    data: { title, content }
+  });
+
+  revalidatePath('/posts');
+}
+
+// app/posts/new/page.tsx
+import { createPost } from './actions';
+
+export default function NewPost() {
+  return (
+    &lt;form action={createPost}&gt;
+      &lt;input name="title" required /&gt;
+      &lt;textarea name="content" required /&gt;
+      &lt;button type="submit"&gt;Create&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgc0d3c7a" class="outline-3">
+<h3 id="orgc0d3c7a">Optimistic Updates</h3>
+<div class="outline-text-3" id="text-orgc0d3c7a">
+<div class="org-src-container">
+<pre class="src src-jsx">"use client";
+import { useOptimistic } from 'react';
+import { addTodo } from './actions';
+
+export function TodoList({ todos }) {
+  const [optimisticTodos, addOptimisticTodo] = useOptimistic(
+    todos,
+    (state, newTodo) =&gt; [...state, { ...newTodo, pending: true }]
+  );
+
+  return (
+    &lt;form action={async (formData) =&gt; {
+      const text = formData.get('text');
+      addOptimisticTodo({ text, id: Date.now() });
+      await addTodo(formData);
+    }}&gt;
+      {/* form content */}
+    &lt;/form&gt;
+  );
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd681dcd" class="outline-2">
+<h2 id="orgd681dcd">Part 6: Caching Strategies</h2>
+<div class="outline-text-2" id="text-orgd681dcd">
+</div>
+<div id="outline-container-org03c795f" class="outline-3">
+<h3 id="org03c795f">Next.js Caching Layers</h3>
+<div class="outline-text-3" id="text-org03c795f">
+<div class="org-src-container">
+<pre class="src src-text">+------------------------+
+|   Request Memoization  |  &lt;- Same request deduped
++------------------------+
+           |
++------------------------+
+|      Data Cache        |  &lt;- fetch() results
++------------------------+
+           |
++------------------------+
+|   Full Route Cache     |  &lt;- Static routes
++------------------------+
+           |
++------------------------+
+|    Router Cache        |  &lt;- Client-side
++------------------------+
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org59ca26d" class="outline-3">
+<h3 id="org59ca26d">Controlling Cache Behavior</h3>
+<div class="outline-text-3" id="text-org59ca26d">
+<div class="org-src-container">
+<pre class="src src-jsx">// Force dynamic
+export const dynamic = 'force-dynamic';
+
+// Or per-fetch
+const data = await fetch(url, {
+  cache: 'no-store'  // Always fresh
+});
+
+const data = await fetch(url, {
+  next: { revalidate: 3600 }  // Revalidate hourly
+});
+
+const data = await fetch(url, {
+  next: { tags: ['products'] }  // Tag-based invalidation
+});
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org3116594" class="outline-3">
+<h3 id="org3116594">Revalidation Patterns</h3>
+<div class="outline-text-3" id="text-org3116594">
+<div class="org-src-container">
+<pre class="src src-jsx">// Time-based
+export const revalidate = 60; // seconds
+
+// On-demand with tags
+import { revalidateTag } from 'next/cache';
+
+export async function updateProduct(id, data) {
+  await db.products.update({ where: { id }, data });
+  revalidateTag('products');
+}
+
+// Path-based
+import { revalidatePath } from 'next/cache';
+
+export async function createPost() {
+  // ...
+  revalidatePath('/posts');
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org4c25d0c" class="outline-2">
+<h2 id="org4c25d0c">Summary</h2>
+<div class="outline-text-2" id="text-org4c25d0c">
+</div>
+<div id="outline-container-org236c184" class="outline-3">
+<h3 id="org236c184">Key Takeaways</h3>
+<div class="outline-text-3" id="text-org236c184">
+<ol class="org-ol">
+<li>RSC is a new paradigm, not just SSR</li>
+<li>Server components reduce client JavaScript</li>
+<li>The boundary is about serialization</li>
+<li>Embrace streaming for better UX</li>
+<li>Server Actions simplify mutations</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-org3d32039" class="outline-3">
+<h3 id="org3d32039">When to Use What</h3>
+<div class="outline-text-3" id="text-org3d32039">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Use Server Components</th>
+<th scope="col" class="org-left">Use Client Components</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left">Data fetching</td>
+<td class="org-left">Event handlers</td>
+</tr>
+
+<tr>
+<td class="org-left">Accessing backend</td>
+<td class="org-left">Form state</td>
+</tr>
+
+<tr>
+<td class="org-left">Heavy computations</td>
+<td class="org-left">Browser APIs</td>
+</tr>
+
+<tr>
+<td class="org-left">Sensitive operations</td>
+<td class="org-left">Real-time updates</td>
+</tr>
+
+<tr>
+<td class="org-left">Rendering static content</td>
+<td class="org-left">Animations</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org105e43b" class="outline-3">
+<h3 id="org105e43b">Resources</h3>
+<div class="outline-text-3" id="text-org105e43b">
+<ul class="org-ul">
+<li><a href="https://react.dev/reference/rsc/server-components">React Docs: Server Components</a></li>
+<li><a href="https://nextjs.org/docs/app/building-your-application/rendering">Next.js Rendering Documentation</a></li>
+<li><a href="https://github.com/reactwg/server-components">React Server Components Working Group</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="outline-container-org325b397" class="outline-2">
+<h2 id="org325b397">Questions?</h2>
+<div class="outline-text-2" id="text-org325b397">
+<div class="org-center">
+<p>
+Join the discussion!
+</p>
+
+<p>
+React Paris Meetup #012
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="date">Date: 2025</p>
+<p class="author">Author: React Paris Community</p>
+<p class="date">Created: 2025-12-13 Sat 20:26</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
