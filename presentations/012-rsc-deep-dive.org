@@ -1,0 +1,464 @@
+#+TITLE: React Server Components Deep Dive
+#+SUBTITLE: React Paris Meetup #012 - WIP
+#+AUTHOR: React Paris Community
+#+DATE: 2025
+#+OPTIONS: toc:nil num:nil reveal_single_file:t
+#+REVEAL_ROOT: https://cdn.jsdelivr.net/npm/reveal.js
+#+REVEAL_THEME: moon
+#+REVEAL_TRANS: slide
+#+REVEAL_PLUGINS: (highlight notes)
+#+REVEAL_EXTRA_CSS:
+#+REVEAL_TITLE_SLIDE: <h2>%t</h2><h3>%s</h3><p>%a</p><p><small>%d</small></p>
+
+* Introduction
+:PROPERTIES:
+:reveal_background: #1a1a2e
+:END:
+
+** The Biggest Shift Since Hooks
+
+#+ATTR_REVEAL: :frag (appear)
+- React Server Components (RSC) fundamentally change how we build apps
+- Not just SSR - a new component model
+- Server and client components coexist
+- Data fetching at the component level
+
+** What We'll Cover
+
+#+ATTR_REVEAL: :frag (appear)
+1. RSC vs SSR vs SSG
+2. The server/client boundary
+3. Data fetching patterns
+4. Streaming and Suspense
+5. Practical patterns with Next.js
+
+* Part 1: RSC Architecture
+:PROPERTIES:
+:reveal_background: #16213e
+:END:
+
+** SSR vs SSG vs RSC
+
+*** Server-Side Rendering (SSR)
+
+#+BEGIN_SRC text
+Request -> Server renders full HTML -> Hydration -> Interactive
+#+END_SRC
+
+- Full page rendered on each request
+- JavaScript bundle still sent
+- Hydration required for interactivity
+
+*** Static Site Generation (SSG)
+
+#+BEGIN_SRC text
+Build time -> HTML generated -> Served as static -> Hydration
+#+END_SRC
+
+- Pages pre-rendered at build
+- Fast initial load
+- Limited dynamic content
+
+*** React Server Components
+
+#+BEGIN_SRC text
+Request -> Server Components execute -> Serialized output -> Client merges
+#+END_SRC
+
+- Components execute on server only
+- No JavaScript sent for server components
+- Seamless integration with client components
+
+** The Mental Model
+
+#+BEGIN_SRC text
++----------------------------------+
+|         Server Components        |
+|  +----------------------------+  |
+|  | - Database queries         |  |
+|  | - File system access       |  |
+|  | - API calls (no CORS)      |  |
+|  | - Heavy computations       |  |
+|  +----------------------------+  |
++----------------------------------+
+              |
+              v
++----------------------------------+
+|         Client Components        |
+|  +----------------------------+  |
+|  | - Event handlers          |  |
+|  | - useState, useEffect     |  |
+|  | - Browser APIs            |  |
+|  | - Interactive UI          |  |
+|  +----------------------------+  |
++----------------------------------+
+#+END_SRC
+
+* Part 2: Server vs Client Boundary
+:PROPERTIES:
+:reveal_background: #0f3460
+:END:
+
+** Default: Server Components
+
+#+BEGIN_SRC jsx
+// app/page.tsx - Server Component by default
+async function ProductPage({ id }) {
+  // Direct database access!
+  const product = await db.products.findUnique({
+    where: { id }
+  });
+
+  return (
+    <div>
+      <h1>{product.name}</h1>
+      <p>{product.description}</p>
+      <AddToCartButton product={product} />
+    </div>
+  );
+}
+#+END_SRC
+
+** Opting into Client
+
+#+BEGIN_SRC jsx
+"use client";
+
+// components/AddToCartButton.tsx
+import { useState } from 'react';
+
+export function AddToCartButton({ product }) {
+  const [added, setAdded] = useState(false);
+
+  return (
+    <button onClick={() => setAdded(true)}>
+      {added ? 'Added!' : 'Add to Cart'}
+    </button>
+  );
+}
+#+END_SRC
+
+** The Boundary Rules
+
+| Server Components CAN         | Server Components CANNOT      |
+|-------------------------------|-------------------------------|
+| Import client components      | Use hooks (useState, etc.)    |
+| Fetch data directly           | Use browser APIs              |
+| Access backend resources      | Handle events                 |
+| Keep secrets secure           | Store client state            |
+
+** Common Mistake: Props Serialization
+
+#+BEGIN_SRC jsx
+// BAD: Functions can't cross the boundary
+<ClientComponent onSubmit={handleSubmit} />
+
+// BAD: Classes and complex objects
+<ClientComponent data={new Date()} />
+
+// GOOD: Serializable data only
+<ClientComponent
+  timestamp={date.toISOString()}
+  productId={product.id}
+/>
+#+END_SRC
+
+* Part 3: Data Fetching Patterns
+:PROPERTIES:
+:reveal_background: #1a1a2e
+:END:
+
+** Pattern 1: Direct Database Access
+
+#+BEGIN_SRC jsx
+// app/users/page.tsx
+import { prisma } from '@/lib/prisma';
+
+export default async function UsersPage() {
+  const users = await prisma.user.findMany({
+    select: { id: true, name: true, email: true }
+  });
+
+  return (
+    <ul>
+      {users.map(user => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  );
+}
+#+END_SRC
+
+No API routes needed!
+
+** Pattern 2: Parallel Data Fetching
+
+#+BEGIN_SRC jsx
+export default async function Dashboard() {
+  // Fetch in parallel
+  const [user, posts, analytics] = await Promise.all([
+    getUser(),
+    getPosts(),
+    getAnalytics()
+  ]);
+
+  return (
+    <>
+      <UserProfile user={user} />
+      <PostList posts={posts} />
+      <AnalyticsChart data={analytics} />
+    </>
+  );
+}
+#+END_SRC
+
+** Pattern 3: Nested Suspense Boundaries
+
+#+BEGIN_SRC jsx
+export default function Page() {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+
+      <Suspense fallback={<UserSkeleton />}>
+        <UserSection />
+      </Suspense>
+
+      <Suspense fallback={<PostsSkeleton />}>
+        <PostsSection />
+      </Suspense>
+
+      <Suspense fallback={<ChartSkeleton />}>
+        <AnalyticsSection />
+      </Suspense>
+    </div>
+  );
+}
+#+END_SRC
+
+Sections load independently!
+
+* Part 4: Streaming and Progressive Rendering
+:PROPERTIES:
+:reveal_background: #16213e
+:END:
+
+** How Streaming Works
+
+#+BEGIN_SRC text
+Time --->
+
+Traditional SSR:
+[====== Wait for all data ======] -> [Send HTML] -> [Hydrate]
+
+Streaming RSC:
+[Shell] -> [Component A] -> [Component B] -> [Component C]
+   |            |               |               |
+   v            v               v               v
+ Render      Stream          Stream          Stream
+#+END_SRC
+
+** loading.tsx Convention
+
+#+BEGIN_SRC jsx
+// app/products/loading.tsx
+export default function Loading() {
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {[...Array(9)].map((_, i) => (
+        <ProductSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+// Automatically wraps app/products/page.tsx
+// with Suspense boundary
+#+END_SRC
+
+** Streaming with fetch()
+
+#+BEGIN_SRC jsx
+// Enable streaming for slow APIs
+async function SlowDataComponent() {
+  const response = await fetch(
+    'https://api.example.com/slow-endpoint',
+    {
+      cache: 'no-store'  // Disable caching for fresh data
+    }
+  );
+  const data = await response.json();
+
+  return <DataDisplay data={data} />;
+}
+#+END_SRC
+
+* Part 5: Server Actions
+:PROPERTIES:
+:reveal_background: #0f3460
+:END:
+
+** Form Mutations Without API Routes
+
+#+BEGIN_SRC jsx
+// app/actions.ts
+"use server";
+
+export async function createPost(formData: FormData) {
+  const title = formData.get('title');
+  const content = formData.get('content');
+
+  await db.posts.create({
+    data: { title, content }
+  });
+
+  revalidatePath('/posts');
+}
+
+// app/posts/new/page.tsx
+import { createPost } from './actions';
+
+export default function NewPost() {
+  return (
+    <form action={createPost}>
+      <input name="title" required />
+      <textarea name="content" required />
+      <button type="submit">Create</button>
+    </form>
+  );
+}
+#+END_SRC
+
+** Optimistic Updates
+
+#+BEGIN_SRC jsx
+"use client";
+import { useOptimistic } from 'react';
+import { addTodo } from './actions';
+
+export function TodoList({ todos }) {
+  const [optimisticTodos, addOptimisticTodo] = useOptimistic(
+    todos,
+    (state, newTodo) => [...state, { ...newTodo, pending: true }]
+  );
+
+  return (
+    <form action={async (formData) => {
+      const text = formData.get('text');
+      addOptimisticTodo({ text, id: Date.now() });
+      await addTodo(formData);
+    }}>
+      {/* form content */}
+    </form>
+  );
+}
+#+END_SRC
+
+* Part 6: Caching Strategies
+:PROPERTIES:
+:reveal_background: #1a1a2e
+:END:
+
+** Next.js Caching Layers
+
+#+BEGIN_SRC text
++------------------------+
+|   Request Memoization  |  <- Same request deduped
++------------------------+
+           |
++------------------------+
+|      Data Cache        |  <- fetch() results
++------------------------+
+           |
++------------------------+
+|   Full Route Cache     |  <- Static routes
++------------------------+
+           |
++------------------------+
+|    Router Cache        |  <- Client-side
++------------------------+
+#+END_SRC
+
+** Controlling Cache Behavior
+
+#+BEGIN_SRC jsx
+// Force dynamic
+export const dynamic = 'force-dynamic';
+
+// Or per-fetch
+const data = await fetch(url, {
+  cache: 'no-store'  // Always fresh
+});
+
+const data = await fetch(url, {
+  next: { revalidate: 3600 }  // Revalidate hourly
+});
+
+const data = await fetch(url, {
+  next: { tags: ['products'] }  // Tag-based invalidation
+});
+#+END_SRC
+
+** Revalidation Patterns
+
+#+BEGIN_SRC jsx
+// Time-based
+export const revalidate = 60; // seconds
+
+// On-demand with tags
+import { revalidateTag } from 'next/cache';
+
+export async function updateProduct(id, data) {
+  await db.products.update({ where: { id }, data });
+  revalidateTag('products');
+}
+
+// Path-based
+import { revalidatePath } from 'next/cache';
+
+export async function createPost() {
+  // ...
+  revalidatePath('/posts');
+}
+#+END_SRC
+
+* Summary
+:PROPERTIES:
+:reveal_background: #1a1a2e
+:END:
+
+** Key Takeaways
+
+#+ATTR_REVEAL: :frag (appear)
+1. RSC is a new paradigm, not just SSR
+2. Server components reduce client JavaScript
+3. The boundary is about serialization
+4. Embrace streaming for better UX
+5. Server Actions simplify mutations
+
+** When to Use What
+
+| Use Server Components       | Use Client Components     |
+|-----------------------------|---------------------------|
+| Data fetching               | Event handlers            |
+| Accessing backend           | Form state                |
+| Heavy computations          | Browser APIs              |
+| Sensitive operations        | Real-time updates         |
+| Rendering static content    | Animations                |
+
+** Resources
+
+- [[https://react.dev/reference/rsc/server-components][React Docs: Server Components]]
+- [[https://nextjs.org/docs/app/building-your-application/rendering][Next.js Rendering Documentation]]
+- [[https://github.com/reactwg/server-components][React Server Components Working Group]]
+
+* Questions?
+:PROPERTIES:
+:reveal_background: #0f3460
+:END:
+
+#+BEGIN_CENTER
+Join the discussion!
+
+React Paris Meetup #012
+#+END_CENTER

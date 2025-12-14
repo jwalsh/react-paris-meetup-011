@@ -1,0 +1,426 @@
+#+TITLE: State Management in 2025
+#+SUBTITLE: The Evolution Beyond Redux
+#+AUTHOR: React Paris Meetup #012
+#+DATE: 2025
+#+STARTUP: beamer
+#+OPTIONS: H:2 toc:t num:t
+#+LATEX_CLASS: beamer
+#+LATEX_CLASS_OPTIONS: [aspectratio=169,14pt]
+#+BEAMER_THEME: Madrid
+#+BEAMER_COLOR_THEME: seahorse
+#+BEAMER_FONT_THEME: professionalfonts
+#+COLUMNS: %45ITEM %10BEAMER_env(Env) %10BEAMER_act(Act) %4BEAMER_col(Col)
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\ttfamily\small,breaklines=true}
+
+* Introduction
+** The State of State Management
+
+*** Is Redux Dead?
+
+- Redux downloads: still 8M+/week on npm
+- But... alternatives are growing fast
+- React 19 changes the game
+- Server state vs client state distinction
+
+*** What We'll Explore
+
+1. Redux Toolkit evolution
+2. Modern alternatives (Zustand, Jotai, Valtio)
+3. Server state with TanStack Query
+4. React 19 Actions and form state
+5. When you actually need global state
+
+* Part 1: The Redux Evolution
+** Redux Toolkit: Redux Done Right
+
+*** The Old Way (Pain)
+
+#+BEGIN_SRC javascript
+// actions.js
+const ADD_TODO = 'ADD_TODO';
+export const addTodo = (text) => ({
+  type: ADD_TODO,
+  payload: { text, id: Date.now() }
+});
+
+// reducer.js
+function todosReducer(state = [], action) {
+  switch (action.type) {
+    case ADD_TODO:
+      return [...state, action.payload];
+    default:
+      return state;
+  }
+}
+#+END_SRC
+
+** Redux Toolkit: Modern Approach
+
+*** createSlice to the Rescue
+
+#+BEGIN_SRC javascript
+import { createSlice } from '@reduxjs/toolkit';
+
+const todosSlice = createSlice({
+  name: 'todos',
+  initialState: [],
+  reducers: {
+    addTodo: (state, action) => {
+      // Immer allows "mutations"!
+      state.push({
+        id: Date.now(),
+        text: action.payload,
+        completed: false
+      });
+    },
+    toggleTodo: (state, action) => {
+      const todo = state.find(t => t.id === action.payload);
+      if (todo) todo.completed = !todo.completed;
+    }
+  }
+});
+#+END_SRC
+
+** RTK Query: Built-in Data Fetching
+
+*** API Slice Definition
+
+#+BEGIN_SRC javascript
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+
+export const api = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  tagTypes: ['Posts'],
+  endpoints: (builder) => ({
+    getPosts: builder.query({
+      query: () => 'posts',
+      providesTags: ['Posts']
+    }),
+    addPost: builder.mutation({
+      query: (body) => ({
+        url: 'posts',
+        method: 'POST',
+        body
+      }),
+      invalidatesTags: ['Posts']
+    })
+  })
+});
+#+END_SRC
+
+* Part 2: Modern Alternatives
+** Zustand: Minimal and Flexible
+
+*** Simple Store Creation
+
+#+BEGIN_SRC javascript
+import { create } from 'zustand';
+
+const useStore = create((set, get) => ({
+  count: 0,
+  todos: [],
+
+  increment: () => set((state) => ({
+    count: state.count + 1
+  })),
+
+  addTodo: (text) => set((state) => ({
+    todos: [...state.todos, { id: Date.now(), text }]
+  })),
+
+  // Derived values
+  get todoCount() {
+    return get().todos.length;
+  }
+}));
+
+// Usage
+function Counter() {
+  const count = useStore((state) => state.count);
+  const increment = useStore((state) => state.increment);
+  return <button onClick={increment}>{count}</button>;
+}
+#+END_SRC
+
+** Jotai: Atomic State
+
+*** Bottom-Up State Management
+
+#+BEGIN_SRC javascript
+import { atom, useAtom, useAtomValue } from 'jotai';
+
+// Primitive atoms
+const countAtom = atom(0);
+const textAtom = atom('');
+
+// Derived atom (read-only)
+const doubleCountAtom = atom((get) =>
+  get(countAtom) * 2
+);
+
+// Writable derived atom
+const uppercaseTextAtom = atom(
+  (get) => get(textAtom).toUpperCase(),
+  (get, set, newValue) => set(textAtom, newValue.toLowerCase())
+);
+
+function Component() {
+  const [count, setCount] = useAtom(countAtom);
+  const double = useAtomValue(doubleCountAtom);
+  return <div>{count} x 2 = {double}</div>;
+}
+#+END_SRC
+
+** Valtio: Proxy-Based Reactivity
+
+*** Mutable State That Just Works
+
+#+BEGIN_SRC javascript
+import { proxy, useSnapshot } from 'valtio';
+
+// State can be mutated directly
+const state = proxy({
+  count: 0,
+  todos: [],
+  user: null
+});
+
+// Actions are just functions
+const actions = {
+  increment: () => { state.count++; },
+  addTodo: (text) => {
+    state.todos.push({ id: Date.now(), text });
+  }
+};
+
+function Counter() {
+  // useSnapshot for reactive reads
+  const snap = useSnapshot(state);
+  return (
+    <button onClick={actions.increment}>
+      {snap.count}
+    </button>
+  );
+}
+#+END_SRC
+
+* Part 3: Server State
+** TanStack Query: The Server State Standard
+
+*** Queries Made Simple
+
+#+BEGIN_SRC javascript
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+function Posts() {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['posts'],
+    queryFn: () => fetch('/api/posts').then(r => r.json()),
+    staleTime: 5 * 60 * 1000  // 5 minutes
+  });
+
+  const mutation = useMutation({
+    mutationFn: (newPost) =>
+      fetch('/api/posts', {
+        method: 'POST',
+        body: JSON.stringify(newPost)
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    }
+  });
+
+  if (isLoading) return <Spinner />;
+  if (error) return <Error message={error.message} />;
+  return <PostList posts={data} onAdd={mutation.mutate} />;
+}
+#+END_SRC
+
+** Server State vs Client State
+
+*** The Distinction
+
+| Server State                | Client State            |
+|-----------------------------+-------------------------|
+| Lives on the backend        | Lives in browser        |
+| Shared across users         | User-specific           |
+| Needs sync/caching          | Ephemeral               |
+| Posts, users, products      | UI state, forms         |
+| Use Query/SWR               | Use Zustand/Context     |
+
+*** The Insight
+
+Most "global state" is actually server state!
+
+- User data? Server state
+- Products? Server state
+- Comments? Server state
+- Theme? Client state (small!)
+- Modal open? Client state (small!)
+
+* Part 4: React 19 Changes Everything
+** useActionState: Form State Simplified
+
+*** The New Pattern
+
+#+BEGIN_SRC javascript
+"use client";
+import { useActionState } from 'react';
+import { submitForm } from './actions';
+
+function ContactForm() {
+  const [state, formAction, isPending] = useActionState(
+    submitForm,
+    { message: '', errors: {} }
+  );
+
+  return (
+    <form action={formAction}>
+      <input name="email" />
+      {state.errors.email && (
+        <span className="error">{state.errors.email}</span>
+      )}
+      <button disabled={isPending}>
+        {isPending ? 'Sending...' : 'Submit'}
+      </button>
+      {state.message && <p>{state.message}</p>}
+    </form>
+  );
+}
+#+END_SRC
+
+** useOptimistic: Instant Feedback
+
+*** Optimistic UI Updates
+
+#+BEGIN_SRC javascript
+import { useOptimistic, useTransition } from 'react';
+
+function TodoList({ todos, addTodoAction }) {
+  const [isPending, startTransition] = useTransition();
+  const [optimisticTodos, addOptimistic] = useOptimistic(
+    todos,
+    (state, newTodo) => [
+      ...state,
+      { ...newTodo, sending: true }
+    ]
+  );
+
+  async function handleAdd(formData) {
+    const text = formData.get('text');
+    addOptimistic({ id: Date.now(), text });
+
+    startTransition(async () => {
+      await addTodoAction(formData);
+    });
+  }
+
+  return (
+    <form action={handleAdd}>
+      {/* ... */}
+    </form>
+  );
+}
+#+END_SRC
+
+* Part 5: URL as State
+** nuqs: Type-Safe URL State
+
+*** Search Params as State
+
+#+BEGIN_SRC javascript
+import { useQueryState, parseAsInteger, parseAsString } from 'nuqs';
+
+function ProductFilters() {
+  // Synced with URL: ?page=1&sort=price&q=shoes
+  const [page, setPage] = useQueryState(
+    'page',
+    parseAsInteger.withDefault(1)
+  );
+  const [sort, setSort] = useQueryState(
+    'sort',
+    parseAsString.withDefault('relevance')
+  );
+  const [query, setQuery] = useQueryState('q');
+
+  return (
+    <div>
+      <input
+        value={query ?? ''}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <select
+        value={sort}
+        onChange={(e) => setSort(e.target.value)}
+      >
+        <option value="relevance">Relevance</option>
+        <option value="price">Price</option>
+      </select>
+    </div>
+  );
+}
+#+END_SRC
+
+** Benefits of URL State
+
+*** Why URL State Wins
+
+- Shareable links with exact state
+- Browser back/forward works
+- Bookmarkable searches/filters
+- SEO benefits
+- No hydration mismatch
+- Survives page refresh
+
+* Part 6: Decision Framework
+** When to Use What?
+
+*** The Decision Tree
+
+#+BEGIN_SRC text
+Do you need state?
+  |
+  +-- Server data? --> TanStack Query / SWR
+  |
+  +-- Form state? --> React 19 Actions / react-hook-form
+  |
+  +-- URL-worthy? --> nuqs / URL params
+  |
+  +-- Component-local? --> useState / useReducer
+  |
+  +-- Shared across routes?
+      |
+      +-- Simple? --> React Context + useReducer
+      |
+      +-- Complex? --> Zustand (simple) / Jotai (atomic)
+      |
+      +-- Enterprise? --> Redux Toolkit
+#+END_SRC
+
+** Summary
+
+*** Key Takeaways
+
+1. Most "state" is actually server state
+2. React 19 handles form state natively
+3. URL state is underutilized
+4. Pick the simplest tool that works
+5. Redux isn't dead, but isn't always needed
+
+*** Resources
+
+- [[https://tanstack.com/query][TanStack Query]]
+- [[https://zustand-demo.pmnd.rs][Zustand]]
+- [[https://jotai.org][Jotai]]
+- [[https://nuqs.47ng.com][nuqs]]
+
+* Questions?
+
+#+BEGIN_CENTER
+Thank you!
+
+React Paris Meetup #012
+#+END_CENTER

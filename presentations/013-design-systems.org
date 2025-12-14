@@ -1,0 +1,519 @@
+#+TITLE: Design Systems in React
+#+SUBTITLE: Building Component Libraries That Scale
+#+AUTHOR: React Paris Meetup #013
+#+DATE: 2025
+#+STARTUP: beamer
+#+OPTIONS: H:2 toc:t num:t
+#+LATEX_CLASS: beamer
+#+LATEX_CLASS_OPTIONS: [aspectratio=169,12pt]
+#+BEAMER_THEME: CambridgeUS
+#+BEAMER_COLOR_THEME: beaver
+#+BEAMER_FONT_THEME: structurebold
+#+COLUMNS: %45ITEM %10BEAMER_env(Env) %10BEAMER_act(Act) %4BEAMER_col(Col)
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \lstset{basicstyle=\ttfamily\footnotesize,breaklines=true}
+
+* Introduction
+** What is a Design System?
+
+*** Beyond a Component Library
+
+A design system is:
+- Design tokens (colors, spacing, typography)
+- Reusable components
+- Documentation and guidelines
+- Design-development bridge
+- Living, evolving standards
+
+*** Why Build One?
+
+- Consistency across products
+- Faster development
+- Better accessibility
+- Easier maintenance
+- Shared language between design and dev
+
+** What We'll Build
+
+*** The Journey
+
+1. Token-based design foundations
+2. Component API design principles
+3. Compound components pattern
+4. Accessibility by default
+5. Documentation with Storybook
+
+* Part 1: Design Tokens
+** The Foundation Layer
+
+*** What Are Tokens?
+
+#+BEGIN_SRC json
+{
+  "color": {
+    "primary": {
+      "50": "#f0f9ff",
+      "500": "#3b82f6",
+      "900": "#1e3a8a"
+    },
+    "semantic": {
+      "success": "{color.green.500}",
+      "error": "{color.red.500}"
+    }
+  },
+  "spacing": {
+    "xs": "4px",
+    "sm": "8px",
+    "md": "16px"
+  }
+}
+#+END_SRC
+
+** Style Dictionary: Token Pipeline
+
+*** Configuration
+
+#+BEGIN_SRC javascript
+// style-dictionary.config.js
+module.exports = {
+  source: ['tokens/**/*.json'],
+  platforms: {
+    css: {
+      transformGroup: 'css',
+      buildPath: 'dist/css/',
+      files: [{
+        destination: 'variables.css',
+        format: 'css/variables'
+      }]
+    },
+    js: {
+      transformGroup: 'js',
+      buildPath: 'dist/js/',
+      files: [{
+        destination: 'tokens.js',
+        format: 'javascript/es6'
+      }]
+    }
+  }
+};
+#+END_SRC
+
+** Generated Output
+
+*** CSS Custom Properties
+
+#+BEGIN_SRC css
+:root {
+  --color-primary-50: #f0f9ff;
+  --color-primary-500: #3b82f6;
+  --color-primary-900: #1e3a8a;
+  --color-semantic-success: var(--color-green-500);
+  --color-semantic-error: var(--color-red-500);
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+}
+#+END_SRC
+
+*** JavaScript Module
+
+#+BEGIN_SRC javascript
+export const colorPrimary500 = '#3b82f6';
+export const spacingMd = '16px';
+#+END_SRC
+
+* Part 2: Component API Design
+** Principles of Good APIs
+
+*** The Golden Rules
+
+1. *Intuitive defaults* - works out of the box
+2. *Progressive disclosure* - simple to complex
+3. *Consistent naming* - learn once, apply everywhere
+4. *Type safety* - IDE autocomplete is documentation
+5. *Composition over configuration*
+
+** Button: A Case Study
+
+*** The Naive Approach (Avoid)
+
+#+BEGIN_SRC jsx
+<Button
+  type="primary"
+  size="large"
+  icon="check"
+  iconPosition="left"
+  loading={true}
+  disabled={false}
+  fullWidth={false}
+  rounded={true}
+  onClick={handleClick}
+/>
+#+END_SRC
+
+Too many boolean props!
+
+** Better Button API
+
+*** Composition-First
+
+#+BEGIN_SRC jsx
+// Clean, composable API
+<Button variant="primary" size="lg">
+  <CheckIcon />
+  Submit
+</Button>
+
+<Button variant="primary" size="lg" loading>
+  Submit
+</Button>
+
+// Polymorphic - render as link
+<Button asChild>
+  <a href="/dashboard">Go to Dashboard</a>
+</Button>
+#+END_SRC
+
+** Variant Props with CVA
+
+*** Class Variance Authority
+
+#+BEGIN_SRC javascript
+import { cva } from 'class-variance-authority';
+
+const button = cva(
+  'inline-flex items-center justify-center rounded-md font-medium',
+  {
+    variants: {
+      variant: {
+        primary: 'bg-blue-600 text-white hover:bg-blue-700',
+        secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
+        ghost: 'hover:bg-gray-100'
+      },
+      size: {
+        sm: 'h-8 px-3 text-sm',
+        md: 'h-10 px-4 text-base',
+        lg: 'h-12 px-6 text-lg'
+      }
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md'
+    }
+  }
+);
+#+END_SRC
+
+* Part 3: Compound Components
+** The Pattern
+
+*** What Are Compound Components?
+
+#+BEGIN_SRC jsx
+// Instead of prop drilling
+<Select
+  options={options}
+  renderOption={...}
+  renderGroup={...}
+  onSelect={...}
+/>
+
+// Compose freely
+<Select onValueChange={setValue}>
+  <Select.Trigger>
+    <Select.Value placeholder="Choose..." />
+  </Select.Trigger>
+  <Select.Content>
+    <Select.Group>
+      <Select.Label>Fruits</Select.Label>
+      <Select.Item value="apple">Apple</Select.Item>
+      <Select.Item value="banana">Banana</Select.Item>
+    </Select.Group>
+  </Select.Content>
+</Select>
+#+END_SRC
+
+** Implementing Compound Components
+
+*** Context-Based Pattern
+
+#+BEGIN_SRC jsx
+const SelectContext = createContext(null);
+
+function Select({ children, value, onValueChange }) {
+  return (
+    <SelectContext.Provider value={{ value, onValueChange }}>
+      <div className="relative">{children}</div>
+    </SelectContext.Provider>
+  );
+}
+
+function SelectItem({ value, children }) {
+  const { onValueChange } = useContext(SelectContext);
+
+  return (
+    <button onClick={() => onValueChange(value)}>
+      {children}
+    </button>
+  );
+}
+
+Select.Item = SelectItem;
+Select.Trigger = SelectTrigger;
+// etc.
+#+END_SRC
+
+** Benefits
+
+*** Why Compound Components?
+
+| Traditional Props        | Compound Components    |
+|--------------------------+------------------------|
+| Fixed structure          | Flexible composition   |
+| Prop explosion           | Clean API              |
+| Hard to customize        | Easy to extend         |
+| All-or-nothing           | Use what you need      |
+
+* Part 4: Accessibility by Default
+** The ARIA Foundation
+
+*** Built-in Accessibility
+
+#+BEGIN_SRC jsx
+function Dialog({ open, onClose, children }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dialog-title"
+      aria-describedby="dialog-desc"
+    >
+      <button
+        onClick={onClose}
+        aria-label="Close dialog"
+      >
+        X
+      </button>
+      {children}
+    </div>
+  );
+}
+#+END_SRC
+
+** Focus Management
+
+*** Focus Trapping
+
+#+BEGIN_SRC jsx
+function Dialog({ open, onClose }) {
+  const firstFocusableRef = useRef(null);
+  const lastFocusableRef = useRef(null);
+
+  useEffect(() => {
+    if (open) {
+      // Focus first element when opened
+      firstFocusableRef.current?.focus();
+
+      // Return focus when closed
+      return () => {
+        document.activeElement?.blur();
+      };
+    }
+  }, [open]);
+
+  // Tab trap implementation
+  const handleKeyDown = (e) => {
+    if (e.key === 'Tab') {
+      // ... trap focus within dialog
+    }
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+}
+#+END_SRC
+
+** Keyboard Navigation
+
+*** Common Patterns
+
+| Component | Keys                        |
+|-----------+-----------------------------|
+| Button    | Enter, Space                |
+| Menu      | Arrow keys, Home, End       |
+| Tabs      | Arrow left/right            |
+| Dialog    | Escape to close             |
+| Combobox  | Arrows, Enter, Escape       |
+
+** Using React Aria
+
+*** Headless Accessibility
+
+#+BEGIN_SRC jsx
+import { useButton } from 'react-aria';
+
+function Button(props) {
+  const ref = useRef(null);
+  const { buttonProps } = useButton(props, ref);
+
+  return (
+    <button {...buttonProps} ref={ref}>
+      {props.children}
+    </button>
+  );
+}
+// Handles: focus, keyboard, touch, disabled states
+// Across all browsers and devices
+#+END_SRC
+
+* Part 5: Documentation
+** Storybook Setup
+
+*** Stories as Documentation
+
+#+BEGIN_SRC jsx
+// Button.stories.tsx
+import type { Meta, StoryObj } from '@storybook/react';
+import { Button } from './Button';
+
+const meta: Meta<typeof Button> = {
+  title: 'Components/Button',
+  component: Button,
+  tags: ['autodocs'],
+  argTypes: {
+    variant: {
+      control: 'select',
+      options: ['primary', 'secondary', 'ghost']
+    }
+  }
+};
+
+export default meta;
+type Story = StoryObj<typeof Button>;
+
+export const Primary: Story = {
+  args: {
+    variant: 'primary',
+    children: 'Click me'
+  }
+};
+#+END_SRC
+
+** Interactive Documentation
+
+*** Controls and Actions
+
+#+BEGIN_SRC jsx
+export const Interactive: Story = {
+  args: {
+    variant: 'primary',
+    size: 'md',
+    disabled: false,
+    loading: false
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole('button');
+
+    await userEvent.click(button);
+    await expect(button).toHaveFocus();
+  }
+};
+#+END_SRC
+
+** MDX Documentation
+
+*** Combining Prose and Code
+
+#+BEGIN_SRC markdown
+# Button
+
+Buttons trigger actions when clicked.
+
+## Usage
+
+import { Button } from '@myorg/design-system';
+
+<Button variant="primary">Submit</Button>
+
+## Variants
+
+<Canvas>
+  <Story of={ButtonStories.Primary} />
+  <Story of={ButtonStories.Secondary} />
+  <Story of={ButtonStories.Ghost} />
+</Canvas>
+
+## Accessibility
+
+- Always provide descriptive text
+- Use aria-label for icon-only buttons
+#+END_SRC
+
+* Part 6: Migration Strategies
+** Build vs Buy Decision
+
+*** The Trade-offs
+
+| Build Your Own              | Use Existing Library        |
+|-----------------------------+-----------------------------|
+| Full control                | Quick to start              |
+| Matches brand exactly       | Battle-tested               |
+| Maintenance burden          | Upgrade complexity          |
+| Team expertise needed       | Dependency on maintainers   |
+
+*** The Middle Path: Headless
+
+- Use headless primitives (Radix, React Aria)
+- Add your own styling
+- Best of both worlds
+
+** Migration Path
+
+*** From MUI to Custom
+
+#+BEGIN_SRC text
+Phase 1: Foundation (2-4 weeks)
+  - Set up tokens
+  - Create primitives (Button, Input)
+  - Parallel usage allowed
+
+Phase 2: Core Components (4-8 weeks)
+  - Dialog, Select, Menu
+  - Replace MUI components gradually
+  - Feature flags for rollout
+
+Phase 3: Cleanup (2-4 weeks)
+  - Remove MUI dependency
+  - Update documentation
+  - Training for team
+#+END_SRC
+
+* Summary
+** Key Takeaways
+
+*** Building for Scale
+
+1. Start with tokens - single source of truth
+2. Design APIs for composition
+3. Compound components for flexibility
+4. Accessibility is not optional
+5. Document everything in Storybook
+
+** Resources
+
+*** Learn More
+
+- [[https://www.designsystems.com/][Design Systems Handbook]]
+- [[https://storybook.js.org/][Storybook]]
+- [[https://www.radix-ui.com/][Radix UI]]
+- [[https://react-spectrum.adobe.com/react-aria/][React Aria]]
+- [[https://cva.style/][Class Variance Authority]]
+
+* Questions?
+
+#+BEGIN_CENTER
+Let's build better component libraries!
+
+React Paris Meetup #013
+#+END_CENTER

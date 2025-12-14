@@ -1,0 +1,588 @@
+#+TITLE: AI-Assisted React Development
+#+SUBTITLE: React Paris Meetup #013 - WIP
+#+AUTHOR: React Paris Community
+#+DATE: 2025
+#+OPTIONS: toc:nil num:nil reveal_single_file:t
+#+REVEAL_ROOT: https://cdn.jsdelivr.net/npm/reveal.js
+#+REVEAL_THEME: solarized
+#+REVEAL_TRANS: convex
+#+REVEAL_PLUGINS: (highlight notes)
+#+REVEAL_EXTRA_CSS:
+#+REVEAL_TITLE_SLIDE: <h1>%t</h1><h4>%s</h4><p>%a</p><p><small>%d</small></p>
+#+REVEAL_HIGHLIGHT_CSS: https://cdn.jsdelivr.net/npm/highlight.js/styles/solarized-light.min.css
+
+* The AI Revolution in Development
+:PROPERTIES:
+:reveal_background: #fdf6e3
+:END:
+
+** A New Era
+
+#+BEGIN_QUOTE
+"AI won't replace developers, but developers using AI will replace those who don't."
+#+END_QUOTE
+
+#+ATTR_REVEAL: :frag (appear)
+- Code generation is just the beginning
+- AI assists at every stage of development
+- The skill is knowing how to collaborate with AI
+- Understanding limitations is crucial
+
+** What We'll Explore
+
+#+ATTR_REVEAL: :frag (appear)
+1. AI coding assistants (Copilot, Claude, etc.)
+2. AI-powered component generation
+3. Building AI features in React apps
+4. Streaming responses with Suspense
+5. Best practices and limitations
+
+* Part 1: AI Coding Assistants
+:PROPERTIES:
+:reveal_background: #eee8d5
+:END:
+
+** The Landscape in 2025
+
+*** Major Players
+
+| Tool            | Strength              | Integration           |
+|-----------------+-----------------------+-----------------------|
+| GitHub Copilot  | Inline completions    | VS Code, JetBrains    |
+| Claude          | Complex reasoning     | API, Claude Code      |
+| Cursor          | Codebase-aware        | Standalone IDE        |
+| Codeium         | Free tier             | Multiple IDEs         |
+| Amazon Q        | AWS integration       | VS Code, CLI          |
+
+** Effective Prompting for React
+
+*** Be Specific
+
+#+BEGIN_SRC text
+// BAD prompt:
+"Make a form"
+
+// GOOD prompt:
+"Create a React form component with:
+- Email and password fields
+- Client-side validation using zod
+- useActionState for submission
+- Loading state during submit
+- Error display below each field
+- Accessible labels and aria attributes"
+#+END_SRC
+
+** Context is King
+
+*** Provide Examples
+
+#+BEGIN_SRC text
+// In your prompt or comments:
+// Follow the pattern from UserForm.tsx
+// Use our Button and Input components from @/components/ui
+// Handle errors like we do in ContactForm
+// Match the styling in forms.css
+
+// Then ask:
+"Create a newsletter subscription form following
+ our existing patterns"
+#+END_SRC
+
+** What AI Does Well
+
+#+ATTR_REVEAL: :frag (appear)
+- Boilerplate generation
+- Pattern recognition and application
+- API documentation lookup
+- Converting between formats (JS to TS, etc.)
+- Writing tests for existing code
+- Explaining complex code
+
+** What AI Struggles With
+
+#+ATTR_REVEAL: :frag (appear)
+- Novel architectural decisions
+- Complex state management
+- Performance optimization (needs profiling data)
+- Security-critical code (always review!)
+- Understanding full system context
+- Keeping up with latest API changes
+
+* Part 2: AI Component Generation
+:PROPERTIES:
+:reveal_background: #fdf6e3
+:END:
+
+** v0.dev: Design to Code
+
+*** From Description to Component
+
+#+BEGIN_SRC text
+Prompt: "A pricing table with three tiers:
+Basic ($9/mo), Pro ($29/mo), Enterprise (custom).
+Each has feature list, CTA button.
+Pro tier highlighted as recommended."
+#+END_SRC
+
+v0 generates:
+- Complete React component
+- Tailwind CSS styling
+- Responsive design
+- Basic accessibility
+
+** Generated Code Review
+
+*** Always Verify
+
+#+BEGIN_SRC jsx
+// v0 might generate:
+<div onClick={handleSelect}>  // [!] Not keyboard accessible
+
+// Should be:
+<button onClick={handleSelect}>
+
+// Or with proper ARIA:
+<div
+  role="button"
+  tabIndex={0}
+  onClick={handleSelect}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      handleSelect();
+    }
+  }}
+>
+#+END_SRC
+
+** Integration Workflow
+
+*** From v0 to Production
+
+#+BEGIN_SRC text
+1. Generate initial component in v0
+2. Copy to your codebase
+3. Replace generic styles with design tokens
+4. Add proper TypeScript types
+5. Implement actual business logic
+6. Add accessibility attributes
+7. Write tests
+8. Document in Storybook
+#+END_SRC
+
+* Part 3: Building AI Features in React
+:PROPERTIES:
+:reveal_background: #eee8d5
+:END:
+
+** The Vercel AI SDK
+
+*** Quick Setup
+
+#+BEGIN_SRC bash
+npm install ai @ai-sdk/openai
+#+END_SRC
+
+#+BEGIN_SRC jsx
+// app/api/chat/route.ts
+import { openai } from '@ai-sdk/openai';
+import { streamText } from 'ai';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = streamText({
+    model: openai('gpt-4-turbo'),
+    messages
+  });
+
+  return result.toDataStreamResponse();
+}
+#+END_SRC
+
+** Chat Interface Component
+
+*** useChat Hook
+
+#+BEGIN_SRC jsx
+'use client';
+import { useChat } from 'ai/react';
+
+export function ChatInterface() {
+  const { messages, input, handleInputChange, handleSubmit, isLoading } =
+    useChat();
+
+  return (
+    <div className="flex flex-col h-screen">
+      <div className="flex-1 overflow-y-auto p-4">
+        {messages.map((m) => (
+          <div key={m.id} className={m.role === 'user' ? 'text-right' : ''}>
+            <span className="font-bold">
+              {m.role === 'user' ? 'You' : 'AI'}:
+            </span>
+            <p>{m.content}</p>
+          </div>
+        ))}
+      </div>
+      <form onSubmit={handleSubmit} className="p-4 border-t">
+        <input
+          value={input}
+          onChange={handleInputChange}
+          placeholder="Ask something..."
+          disabled={isLoading}
+        />
+      </form>
+    </div>
+  );
+}
+#+END_SRC
+
+** Streaming with Suspense
+
+*** Progressive UI Updates
+
+#+BEGIN_SRC jsx
+'use client';
+import { useCompletion } from 'ai/react';
+
+function StreamingDemo() {
+  const { completion, input, handleInputChange, handleSubmit, isLoading } =
+    useCompletion({
+      api: '/api/completion'
+    });
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit}>
+        <textarea
+          value={input}
+          onChange={handleInputChange}
+          placeholder="Enter a topic..."
+        />
+        <button type="submit" disabled={isLoading}>
+          Generate
+        </button>
+      </form>
+
+      {/* Streams in real-time */}
+      <div className="prose">
+        {completion}
+        {isLoading && <span className="animate-pulse">|</span>}
+      </div>
+    </div>
+  );
+}
+#+END_SRC
+
+* Part 4: Advanced Patterns
+:PROPERTIES:
+:reveal_background: #fdf6e3
+:END:
+
+** Structured Output
+
+*** JSON Mode with Zod
+
+#+BEGIN_SRC jsx
+import { generateObject } from 'ai';
+import { z } from 'zod';
+
+const recipeSchema = z.object({
+  name: z.string(),
+  ingredients: z.array(z.object({
+    item: z.string(),
+    amount: z.string()
+  })),
+  steps: z.array(z.string()),
+  prepTime: z.number(),
+  difficulty: z.enum(['easy', 'medium', 'hard'])
+});
+
+const { object: recipe } = await generateObject({
+  model: openai('gpt-4-turbo'),
+  schema: recipeSchema,
+  prompt: 'Generate a recipe for chocolate chip cookies'
+});
+
+// recipe is fully typed!
+console.log(recipe.ingredients[0].item);
+#+END_SRC
+
+** Tool Use / Function Calling
+
+*** AI with Actions
+
+#+BEGIN_SRC jsx
+import { streamText, tool } from 'ai';
+import { z } from 'zod';
+
+const result = streamText({
+  model: openai('gpt-4-turbo'),
+  messages,
+  tools: {
+    getWeather: tool({
+      description: 'Get current weather for a location',
+      parameters: z.object({
+        location: z.string().describe('City name')
+      }),
+      execute: async ({ location }) => {
+        const weather = await fetchWeatherAPI(location);
+        return weather;
+      }
+    }),
+    searchProducts: tool({
+      description: 'Search product catalog',
+      parameters: z.object({
+        query: z.string(),
+        maxPrice: z.number().optional()
+      }),
+      execute: async ({ query, maxPrice }) => {
+        return await searchCatalog(query, maxPrice);
+      }
+    })
+  }
+});
+#+END_SRC
+
+** RAG: Retrieval Augmented Generation
+
+*** Grounding AI in Your Data
+
+#+BEGIN_SRC text
+User Query
+    |
+    v
++-------------------+
+| Embedding Model   |  Convert to vector
++-------------------+
+    |
+    v
++-------------------+
+| Vector Database   |  Find similar docs
+| (Pinecone, etc.)  |
++-------------------+
+    |
+    v
++-------------------+
+| LLM with Context  |  Answer with sources
++-------------------+
+    |
+    v
+Response with citations
+#+END_SRC
+
+** RAG Implementation
+
+*** Vector Search + Generation
+
+#+BEGIN_SRC jsx
+async function ragQuery(question: string) {
+  // 1. Create embedding of question
+  const embedding = await createEmbedding(question);
+
+  // 2. Search vector database
+  const relevantDocs = await vectorDB.search({
+    vector: embedding,
+    topK: 5
+  });
+
+  // 3. Generate answer with context
+  const response = await generateText({
+    model: openai('gpt-4-turbo'),
+    prompt: `Answer based on these documents:
+
+${relevantDocs.map(d => d.content).join('\n\n')}
+
+Question: ${question}`
+  });
+
+  return {
+    answer: response.text,
+    sources: relevantDocs.map(d => d.metadata.url)
+  };
+}
+#+END_SRC
+
+* Part 5: Error Handling and UX
+:PROPERTIES:
+:reveal_background: #eee8d5
+:END:
+
+** Rate Limiting
+
+*** Protecting Your API
+
+#+BEGIN_SRC jsx
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, '1 m') // 10 per minute
+});
+
+export async function POST(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
+  const { success, remaining } = await ratelimit.limit(ip);
+
+  if (!success) {
+    return new Response('Rate limited', {
+      status: 429,
+      headers: { 'X-RateLimit-Remaining': remaining.toString() }
+    });
+  }
+
+  // Process AI request...
+}
+#+END_SRC
+
+** Graceful Degradation
+
+*** Handling Failures
+
+#+BEGIN_SRC jsx
+function AIFeature() {
+  const { error, isLoading, retry } = useChat({
+    onError: (err) => {
+      // Log to monitoring
+      captureException(err);
+    }
+  });
+
+  if (error) {
+    return (
+      <div className="bg-yellow-50 p-4 rounded">
+        <p>AI is temporarily unavailable.</p>
+        <button onClick={retry}>Try again</button>
+        <p className="text-sm mt-2">
+          You can still use the app manually.
+        </p>
+      </div>
+    );
+  }
+
+  // Normal render...
+}
+#+END_SRC
+
+** Cost Optimization
+
+*** Strategies
+
+#+ATTR_REVEAL: :frag (appear)
+- Cache common queries
+- Use smaller models for simple tasks
+- Implement token budgets per user
+- Stream responses (better UX, no change in cost)
+- Batch requests where possible
+- Monitor usage with observability tools
+
+* Part 6: Responsible AI Integration
+:PROPERTIES:
+:reveal_background: #fdf6e3
+:END:
+
+** Content Moderation
+
+*** Filtering Harmful Content
+
+#+BEGIN_SRC jsx
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+async function moderatedGeneration(prompt: string) {
+  // Pre-check user input
+  const moderation = await openai.moderations.create({
+    input: prompt
+  });
+
+  if (moderation.results[0].flagged) {
+    throw new Error('Content policy violation');
+  }
+
+  // Safe to proceed
+  const response = await generateText({
+    model: openai('gpt-4-turbo'),
+    prompt,
+    // Also set system prompt for safety
+    system: `You are a helpful assistant. Never provide
+             harmful, illegal, or inappropriate content.`
+  });
+
+  return response;
+}
+#+END_SRC
+
+** Transparency with Users
+
+*** Best Practices
+
+#+ATTR_REVEAL: :frag (appear)
+- Clearly label AI-generated content
+- Show confidence levels when appropriate
+- Allow users to provide feedback
+- Explain what data is used
+- Provide opt-out options
+- Document AI limitations
+
+** The Human-AI Balance
+
+#+BEGIN_SRC text
++------------------------------------------+
+|              Best Results                |
++------------------------------------------+
+|                                          |
+|     Human Expertise + AI Assistance      |
+|                                          |
+|  +----------------+  +----------------+  |
+|  | Human:         |  | AI:            |  |
+|  | - Judgment     |  | - Speed        |  |
+|  | - Context      |  | - Consistency  |  |
+|  | - Creativity   |  | - Scale        |  |
+|  | - Ethics       |  | - Patterns     |  |
+|  +----------------+  +----------------+  |
+|                                          |
++------------------------------------------+
+#+END_SRC
+
+* Summary
+:PROPERTIES:
+:reveal_background: #eee8d5
+:END:
+
+** Key Takeaways
+
+#+ATTR_REVEAL: :frag (appear)
+1. AI assistants multiply developer productivity
+2. Generated code needs human review
+3. Vercel AI SDK simplifies streaming UIs
+4. Structured output with Zod is powerful
+5. Always handle errors gracefully
+6. Be transparent about AI usage
+
+** The Future
+
+#+ATTR_REVEAL: :frag (appear)
+- More AI-native React patterns emerging
+- Better integration with React Server Components
+- Local/edge AI models for privacy
+- AI-assisted testing and debugging
+- Collaborative AI pair programming
+
+** Resources
+
+- [[https://sdk.vercel.ai/][Vercel AI SDK]]
+- [[https://v0.dev/][v0.dev - AI Component Generation]]
+- [[https://github.com/features/copilot][GitHub Copilot]]
+- [[https://claude.ai/][Claude by Anthropic]]
+- [[https://www.anthropic.com/claude-code][Claude Code CLI]]
+
+* Questions?
+:PROPERTIES:
+:reveal_background: #fdf6e3
+:END:
+
+#+BEGIN_CENTER
+Embrace AI as your coding partner!
+
+React Paris Meetup #013
+#+END_CENTER
